@@ -1,472 +1,404 @@
 from llvmlite import ir
 import llvmlite.binding as llvm
-import sys
-import os
+import sys, os
 
-class CompileError(Exception):
-    pass
+class CompileError(Exception): pass
 
 class Token:
     def __init__(self, kind, text, line, col):
-        self.kind = kind
-        self.text = text
-        self.line = line
-        self.col = col
-
-    def __repr__(self):
-        return f"({self.text!r}, {self.kind}, {self.line}:{self.col})"
+        self.kind, self.text, self.line, self.col = kind, text, line, col
 
 KEYWORDS = {b"i32", b"mut", b"exit"}
 
-def is_alpha(b):
-    return 65 <= b <= 90 or 97 <= b <= 122 or b == 95
-
-def is_digit(b):
-    return 48 <= b <= 57
+def is_alpha(b): return 65 <= b <= 90 or 97 <= b <= 122 or b == 95
+def is_digit(b): return 48 <= b <= 57
 
 def lex(data):
-    lines, tokens = [], []
-    state = "START"
-    i = 0
-    line = col = 1
+    lines, toks, state, i, line, col = [], [], "START", 0, 1, 1
     start = 0
-    start_line = start_col = 1
-    braces = []
+    sl = sc = 1
 
     while i <= len(data):
         b = data[i] if i < len(data) else None
 
         if state == "START":
-            if b is None:
-                break
-
-            if b in (32, 9):
-                i += 1
-                col += 1
-                continue
+            if b is None: break
+            if b in (32, 9, 13):
+                i += 1; col += 1; continue
 
             if b == 10:
-                if braces:
-                    t = braces[0]
-                    raise CompileError(
-                        f"line {t.line}:{t.col}: "
-                        "'{' is not closed before the end of the line"
-                    )
-
-                tokens.append(Token("endline", "\n", line, col))
-                lines.append(tokens)
-                tokens = []
-
-                i += 1
-                line += 1
-                col = 1
-                continue
+                toks.append(Token("endline", "\n", line, col))
+                lines.append(toks); toks = []
+                i += 1; line += 1; col = 1; continue
 
             if is_alpha(b):
-                state = "IDENT"
-                start, start_line, start_col = i, line, col
-                i += 1
-                col += 1
-                continue
+                state, start, sl, sc = "IDENT", i, line, col
+                i += 1; col += 1; continue
 
             if is_digit(b):
-                state = "NUMBER"
-                start, start_line, start_col = i, line, col
-                i += 1
-                col += 1
-                continue
+                state, start, sl, sc = "NUMBER", i, line, col
+                i += 1; col += 1; continue
 
-            if b == ord("{"):
-                t = Token("block", "{", line, col)
-                tokens.append(t)
-                braces.append(t)
-                i += 1
-                col += 1
-                continue
-
-            if b == ord("}"):
-                tokens.append(Token("block", "}", line, col))
-                if braces:
-                    braces.pop()
-                i += 1
-                col += 1
-                continue
+            if b in (ord("{"), ord("}")):
+                toks.append(Token("block", chr(b), line, col))
+                i += 1; col += 1; continue
 
             if b in (ord("+"), ord("-"), ord("*")):
-                tokens.append(Token("operator", chr(b), line, col))
-                i += 1
-                col += 1
-                continue
+                toks.append(Token("operator", chr(b), line, col))
+                i += 1; col += 1; continue
 
             if b == ord(":"):
-                state = "COLON"
-                start_line, start_col = line, col
-                i += 1
-                col += 1
-                continue
+                state, sl, sc = "COLON", line, col
+                i += 1; col += 1; continue
 
             bad = repr(chr(b)) if 32 <= b <= 126 else f"0x{b:02x}"
-            raise CompileError(
-                f"line {line}:{col}: unexpected byte {bad}"
-            )
+            raise CompileError(f"line {line}:{col}: unexpected byte {bad}")
 
         elif state == "IDENT":
             if b is not None and (is_alpha(b) or is_digit(b)):
-                i += 1
-                col += 1
-                continue
+                i += 1; col += 1; continue
 
             word = data[start:i]
             kind = "keyword" if word in KEYWORDS else "identifier"
-
-            tokens.append(
-                Token(
-                    kind,
-                    word.decode("ascii"),
-                    start_line,
-                    start_col
-                )
-            )
-
+            toks.append(Token(kind, word.decode("ascii"), sl, sc))
             state = "START"
-            continue
 
         elif state == "NUMBER":
             if b is not None and is_digit(b):
-                i += 1
-                col += 1
-                continue
+                i += 1; col += 1; continue
 
             if b is not None and is_alpha(b):
-                raise CompileError(
-                    f"line {start_line}:{start_col}: "
-                    "letter inside number"
-                )
+                raise CompileError(f"line {sl}:{sc}: letter inside number")
 
-            tokens.append(
-                Token(
-                    "number",
-                    data[start:i].decode("ascii"),
-                    start_line,
-                    start_col
-                )
-            )
-
+            toks.append(Token("number", data[start:i].decode("ascii"), sl, sc))
             state = "START"
-            continue
 
         elif state == "COLON":
-            if b == ord("="):
-                tokens.append(
-                    Token("operator", ":=", start_line, start_col)
-                )
+            if b != ord("="):
+                raise CompileError(f"line {sl}:{sc}: ':' must be followed by '='")
 
-                state = "START"
-                i += 1
-                col += 1
-                continue
+            toks.append(Token("operator", ":=", sl, sc))
+            state = "START"; i += 1; col += 1
 
-            raise CompileError(
-                f"line {start_line}:{start_col}: "
-                "':' must be followed by '='"
-            )
-
-    if braces:
-        t = braces[0]
-        raise CompileError(
-            f"line {t.line}:{t.col}: "
-            "'{' is not closed before the end of the line"
-        )
-
-    if tokens:
-        lines.append(tokens)
-
+    if toks: lines.append(toks)
     return lines
 
-def error(token, message):
-    raise CompileError(
-        f"line {token.line}:{token.col}: {message}"
-    )
+
+class ASTNode:
+    def children(self): return []
+
+    def accept(self, visitor):
+        name = type(self).__name__[:-4].lower()
+        return getattr(visitor, "visit_" + name)(self)
+
+    def dump(self, prefix="", last=True, root=True):
+        print(self.label() if root else prefix + ("└── " if last else "├── ") + self.label())
+        prefix = "" if root else prefix + ("    " if last else "│   ")
+        kids = self.children()
+
+        for i, child in enumerate(kids):
+            child.dump(prefix, i == len(kids) - 1, False)
+
+
+class ProgramNode(ASTNode):
+    def __init__(self, statements, exit_node):
+        self.statements, self.exit_node = statements, exit_node
+
+    def label(self): return "Program"
+    def children(self): return self.statements + [self.exit_node]
+
+
+class DeclNode(ASTNode):
+    def __init__(self, line, col, name, mutable, init):
+        self.line, self.col, self.name = line, col, name
+        self.mutable, self.init = mutable, init
+
+    def label(self): return f"Decl {self.name} [{'mut' if self.mutable else 'const'}]"
+    def children(self): return [self.init]
+
+
+class AssignNode(ASTNode):
+    def __init__(self, line, col, name, value):
+        self.line, self.col, self.name, self.value = line, col, name, value
+
+    def label(self): return f"Assign {self.name}"
+    def children(self): return [self.value]
+
+
+class ExitNode(ASTNode):
+    def __init__(self, line, col, value):
+        self.line, self.col, self.value = line, col, value
+
+    def label(self): return "Exit"
+    def children(self): return [self.value]
+
+
+class BinOpNode(ASTNode):
+    def __init__(self, line, col, op, left, right):
+        self.line, self.col, self.op = line, col, op
+        self.left, self.right = left, right
+
+    def label(self): return f"BinOp {self.op}"
+    def children(self): return [self.left, self.right]
+
+
+class VarNode(ASTNode):
+    def __init__(self, line, col, name):
+        self.line, self.col, self.name = line, col, name
+
+    def label(self): return f"Var {self.name}"
+
+
+class ConstNode(ASTNode):
+    def __init__(self, line, col, value):
+        self.line, self.col, self.value = line, col, value
+
+    def label(self): return f"Const {self.value}"
+
+
+class Parser:
+    def __init__(self, lines):
+        self.lines = [[t for t in line if t.kind != "endline"] for line in lines]
+        self.toks, self.pos = [], 0
+
+    def peek(self):
+        return self.toks[self.pos] if self.pos < len(self.toks) else None
+
+    def eat(self):
+        t = self.peek()
+        if t: self.pos += 1
+        return t
+
+    def fail(self, message):
+        t = self.peek()
+
+        if t:
+            raise CompileError(f"line {t.line}:{t.col}: {message}")
+
+        if self.toks:
+            t = self.toks[-1]
+            raise CompileError(f"line {t.line}:{t.col + len(t.text)}: {message}")
+
+        raise CompileError(message)
+
+    def expect_text(self, text):
+        if not self.peek() or self.peek().text != text:
+            self.fail(f"expected '{text}'")
+        return self.eat()
+
+    def expect_kind(self, kind, what):
+        if not self.peek() or self.peek().kind != kind:
+            self.fail(f"expected {what}")
+        return self.eat()
+
+    def parse_program(self):
+        statements, exit_node = [], None
+
+        for line in self.lines:
+            if not line: continue
+            self.toks, self.pos = line, 0
+            first = self.peek()
+
+            if exit_node:
+                self.fail("nothing is allowed after exit")
+
+            if first.text == "i32":
+                statements.append(self.parse_decl())
+            elif first.kind == "identifier":
+                statements.append(self.parse_assign())
+            elif first.text == "exit":
+                exit_node = self.parse_exit()
+            else:
+                self.fail(f"cannot start statement with '{first.text}'")
+
+            if self.peek():
+                self.fail(f"unexpected '{self.peek().text}' after the statement")
+
+        if not exit_node:
+            nonempty = [line for line in self.lines if line]
+
+            if nonempty:
+                t = nonempty[-1][-1]
+                raise CompileError(
+                    f"line {t.line}:{t.col + len(t.text)}: program has no exit statement"
+                )
+
+            raise CompileError("line 1:1: program has no exit statement")
+
+        return ProgramNode(statements, exit_node)
+
+    def parse_decl(self):
+        self.expect_text("i32")
+        mutable = bool(self.peek() and self.peek().text == "mut")
+        if mutable: self.eat()
+
+        name = self.expect_kind("identifier", "a variable name")
+
+        if not self.peek() or self.peek().text != "{":
+            raise CompileError(
+                f"line {name.line}:{name.col}: variable '{name.text}' needs an initialiser in {{}}"
+            )
+
+        self.eat()
+        init = self.parse_expr()
+        self.expect_text("}")
+
+        return DeclNode(name.line, name.col, name.text, mutable, init)
+
+    def parse_assign(self):
+        name = self.expect_kind("identifier", "a variable name")
+
+        if not self.peek() or self.peek().text != ":=":
+            got = "end of line" if not self.peek() else f"'{self.peek().text}'"
+            self.fail(f"expected ':=' after '{name.text}', got {got}")
+
+        self.eat()
+        value = self.parse_expr()
+        return AssignNode(name.line, name.col, name.text, value)
+
+    def parse_exit(self):
+        t = self.expect_text("exit")
+        return ExitNode(t.line, t.col, self.parse_factor())
+
+    def parse_expr(self):
+        node = self.parse_term()
+
+        while self.peek() and self.peek().kind == "operator" and self.peek().text in ("+", "-"):
+            op = self.eat()
+            node = BinOpNode(op.line, op.col, op.text, node, self.parse_term())
+
+        return node
+
+    def parse_term(self):
+        node = self.parse_factor()
+
+        while self.peek() and self.peek().kind == "operator" and self.peek().text == "*":
+            op = self.eat()
+            node = BinOpNode(op.line, op.col, op.text, node, self.parse_factor())
+
+        return node
+
+    def parse_factor(self):
+        t = self.peek()
+
+        if not t:
+            self.fail("expected a constant or a variable")
+
+        if t.kind == "number":
+            self.eat()
+            return ConstNode(t.line, t.col, int(t.text))
+
+        if t.kind == "identifier":
+            self.eat()
+            return VarNode(t.line, t.col, t.text)
+
+        self.fail(f"expected a constant or a variable, got '{t.text}'")
+
+
+class CodeGen:
+    def __init__(self):
+        self.I32, self.I8 = ir.IntType(32), ir.IntType(8)
+        self.module = ir.Module(name="practice3")
+        self.module.triple = llvm.get_default_triple()
+
+        main = ir.Function(self.module, ir.FunctionType(self.I32, []), name="main")
+        self.builder = ir.IRBuilder(main.append_basic_block("entry"))
+
+        self.printf = ir.Function(
+            self.module,
+            ir.FunctionType(self.I32, [ir.PointerType(self.I8)], var_arg=True),
+            name="printf"
+        )
+
+        text = b"Program exit with result %d\n\0"
+        self.fmt = ir.GlobalVariable(
+            self.module, ir.ArrayType(self.I8, len(text)), name="fmt"
+        )
+        self.fmt.linkage = "private"
+        self.fmt.global_constant = True
+        self.fmt.initializer = ir.Constant(
+            ir.ArrayType(self.I8, len(text)), bytearray(text)
+        )
+
+        self.symbols = {}
+
+    def fail(self, node, message):
+        raise CompileError(f"line {node.line}:{node.col}: {message}")
+
+    def visit_program(self, node):
+        for statement in node.statements:
+            statement.accept(self)
+
+        node.exit_node.accept(self)
+        return self.module
+
+    def visit_decl(self, node):
+        if node.name in self.symbols:
+            self.fail(node, f"variable '{node.name}' is already declared")
+
+        value = node.init.accept(self)
+        ptr = self.builder.alloca(self.I32, name=node.name)
+        self.builder.store(value, ptr)
+        self.symbols[node.name] = {"ptr": ptr, "mut": node.mutable}
+
+    def visit_assign(self, node):
+        if node.name not in self.symbols:
+            self.fail(node, f"variable '{node.name}' is used before its declaration")
+
+        if not self.symbols[node.name]["mut"]:
+            self.fail(node, f"cannot assign to '{node.name}': it is not mut")
+
+        self.builder.store(node.value.accept(self), self.symbols[node.name]["ptr"])
+
+    def visit_exit(self, node):
+        fmt = self.builder.bitcast(self.fmt, ir.PointerType(self.I8))
+        self.builder.call(self.printf, [fmt, node.value.accept(self)])
+        self.builder.ret(ir.Constant(self.I32, 0))
+
+    def visit_binop(self, node):
+        left, right = node.left.accept(self), node.right.accept(self)
+
+        if node.op == "+": return self.builder.add(left, right)
+        if node.op == "-": return self.builder.sub(left, right)
+        return self.builder.mul(left, right)
+
+    def visit_var(self, node):
+        if node.name not in self.symbols:
+            self.fail(node, f"variable '{node.name}' is used before its declaration")
+
+        return self.builder.load(self.symbols[node.name]["ptr"])
+
+    def visit_const(self, node):
+        return ir.Constant(self.I32, node.value)
+
 
 if len(sys.argv) != 3:
     print(
-        "usage: python3 compiler.py <input> <output.ll>",
+        "usage:\n"
+        "  python3 compiler.py input.txt output.ll\n"
+        "  python3 compiler.py --ast input.txt",
         file=sys.stderr
     )
     sys.exit(1)
 
-input_path, output_path = sys.argv[1], sys.argv[2]
+ast_mode = sys.argv[1] == "--ast"
+input_path, output_path = (sys.argv[2], None) if ast_mode else (sys.argv[1], sys.argv[2])
 
-if os.path.exists(output_path):
+if output_path and os.path.exists(output_path):
     os.remove(output_path)
 
 try:
     with open(input_path, "rb") as f:
-        token_lines = lex(f.read())
+        tree = Parser(lex(f.read())).parse_program()
 
-    program = [
-        [t for t in line if t.kind != "endline"]
-        for line in token_lines
-    ]
-    program = [line for line in program if line]
+    if ast_mode:
+        tree.dump()
+    else:
+        module = tree.accept(CodeGen())
 
-    I32 = ir.IntType(32)
-    I8 = ir.IntType(8)
-
-    module = ir.Module(name="practice2")
-    module.triple = llvm.get_default_triple()
-
-    main = ir.Function(
-        module,
-        ir.FunctionType(I32, []),
-        name="main"
-    )
-
-    builder = ir.IRBuilder(
-        main.append_basic_block("entry")
-    )
-
-    printf = ir.Function(
-        module,
-        ir.FunctionType(
-            I32,
-            [ir.PointerType(I8)],
-            var_arg=True
-        ),
-        name="printf"
-    )
-
-    text = b"Program exit with result %d\n\0"
-
-    fmt = ir.GlobalVariable(
-        module,
-        ir.ArrayType(I8, len(text)),
-        name="fmt"
-    )
-
-    fmt.linkage = "private"
-    fmt.global_constant = True
-    fmt.initializer = ir.Constant(
-        ir.ArrayType(I8, len(text)),
-        bytearray(text)
-    )
-
-    symbols = {}
-
-    def value(t):
-        if t.kind == "number":
-            return ir.Constant(I32, int(t.text))
-
-        if t.kind == "identifier":
-            if t.text not in symbols:
-                error(
-                    t,
-                    f"variable '{t.text}' is used "
-                    "before its declaration"
-                )
-
-            return builder.load(
-                symbols[t.text]["ptr"]
-            )
-
-        error(t, "expected a number or variable")
-
-    def expr(ts):
-        if len(ts) == 1:
-            return value(ts[0])
-
-        if (
-            len(ts) == 3
-            and ts[1].kind == "operator"
-            and ts[1].text in ("+", "-", "*")
-        ):
-            a = value(ts[0])
-            b = value(ts[2])
-
-            if ts[1].text == "+":
-                return builder.add(a, b)
-
-            if ts[1].text == "-":
-                return builder.sub(a, b)
-
-            return builder.mul(a, b)
-
-        error(
-            ts[3] if len(ts) > 3 else ts[-1],
-            "invalid expression"
-        )
-
-    exit_found = False
-
-    for index, ts in enumerate(program):
-        first = ts[0]
-
-        if first.kind == "keyword" and first.text == "i32":
-            p = 1
-
-            mutable = (
-                p < len(ts)
-                and ts[p].kind == "keyword"
-                and ts[p].text == "mut"
-            )
-
-            if mutable:
-                p += 1
-
-            if p >= len(ts) or ts[p].kind != "identifier":
-                error(
-                    ts[p] if p < len(ts) else first,
-                    "expected variable name"
-                )
-
-            name_t = ts[p]
-            name = name_t.text
-            p += 1
-
-            if name in symbols:
-                error(
-                    name_t,
-                    f"variable '{name}' is already declared"
-                )
-
-            if p >= len(ts) or ts[p].text != "{":
-                error(
-                    name_t,
-                    f"variable '{name}' needs "
-                    "an initialiser in {}"
-                )
-
-            close = next(
-                (
-                    j for j in range(p + 1, len(ts))
-                    if ts[j].text == "}"
-                ),
-                None
-            )
-
-            if close is None:
-                error(
-                    name_t,
-                    f"variable '{name}' needs "
-                    "an initialiser in {{}}"
-                )
-
-            if close != len(ts) - 1:
-                error(
-                    ts[close + 1],
-                    "extra tokens after declaration"
-                )
-
-            if close == p + 1:
-                error(
-                    ts[close],
-                    "empty initialiser"
-                )
-
-            init = expr(ts[p + 1:close])
-
-            ptr = builder.alloca(I32, name=name)
-            builder.store(init, ptr)
-
-            symbols[name] = {
-                "ptr": ptr,
-                "mut": mutable
-            }
-
-        elif first.kind == "identifier":
-            if (
-                len(ts) < 2
-                or ts[1].kind != "operator"
-                or ts[1].text != ":="
-            ):
-                error(
-                    ts[1] if len(ts) > 1 else first,
-                    "expected :="
-                )
-
-            name = first.text
-
-            if name not in symbols:
-                error(
-                    first,
-                    f"variable '{name}' is used "
-                    "before its declaration"
-                )
-
-            if not symbols[name]["mut"]:
-                error(
-                    first,
-                    f"cannot assign to '{name}': it is not mut"
-                )
-
-            if len(ts) < 3:
-                error(
-                    ts[1],
-                    "missing assignment value"
-                )
-
-            builder.store(
-                expr(ts[2:]),
-                symbols[name]["ptr"]
-            )
-
-        elif (
-            first.kind == "keyword"
-            and first.text == "exit"
-        ):
-            if len(ts) != 2:
-                error(
-                    first,
-                    "exit expects one value"
-                )
-
-            if index != len(program) - 1:
-                error(
-                    first,
-                    "exit must be the last statement"
-                )
-
-            result = value(ts[1])
-
-            fmt_ptr = builder.bitcast(
-                fmt,
-                ir.PointerType(I8)
-            )
-
-            builder.call(
-                printf,
-                [fmt_ptr, result]
-            )
-
-            builder.ret(
-                ir.Constant(I32, 0)
-            )
-
-            exit_found = True
-
-        else:
-            error(
-                first,
-                "cannot parse line"
-            )
-
-    if not exit_found:
-        if program:
-            error(
-                program[-1][0],
-                "program has no exit statement"
-            )
-
-        raise CompileError(
-            "line 1:1: program has no exit statement"
-        )
-
-    with open(output_path, "w") as f:
-        f.write(str(module))
+        with open(output_path, "w") as f:
+            f.write(str(module))
 
 except CompileError as e:
-    print(
-        f"compilation error: {e}",
-        file=sys.stderr
-    )
+    print(f"compilation error: {e}", file=sys.stderr)
     sys.exit(1)
