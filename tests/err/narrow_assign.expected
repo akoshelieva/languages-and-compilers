@@ -1,0 +1,1 @@
+compilation error: line 3:1: cannot assign to 'b' of type i32 with a value of type i64

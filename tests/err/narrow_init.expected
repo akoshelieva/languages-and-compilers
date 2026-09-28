@@ -1,0 +1,1 @@
+compilation error: line 2:5: cannot initialise 'b' of type i32 with a value of type i64
