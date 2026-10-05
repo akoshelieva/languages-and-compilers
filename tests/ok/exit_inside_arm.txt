@@ -1,0 +1,10 @@
+bool choose{false}
+if choose
+{
+ exit 10
+}
+else
+{
+ exit 20
+}
+exit 30

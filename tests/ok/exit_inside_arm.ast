@@ -1,0 +1,13 @@
+Program
+  Decl choose bool const
+    Bool false
+  If
+    Var choose
+    Block
+      Exit
+        Const 10
+    Block
+      Exit
+        Const 20
+  Exit
+    Const 30

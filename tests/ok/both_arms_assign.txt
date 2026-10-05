@@ -1,0 +1,11 @@
+i32 mut r{0}
+i64 n{3}
+if n == 3
+{
+ r := 1
+}
+else
+{
+ r := 2
+}
+exit r

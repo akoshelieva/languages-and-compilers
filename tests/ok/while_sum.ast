@@ -1,0 +1,20 @@
+Program
+  Decl i i32 mut
+    Const 1
+  Decl sum i32 mut
+    Const 0
+  While
+    BinOp !=
+      Var i
+      Const 11
+    Block
+      Assign sum
+        BinOp +
+          Var sum
+          Var i
+      Assign i
+        BinOp +
+          Var i
+          Const 1
+  Exit
+    Var sum

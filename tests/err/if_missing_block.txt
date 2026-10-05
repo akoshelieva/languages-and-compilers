@@ -1,0 +1,4 @@
+bool b{true}
+if b
+a := 1
+exit 0

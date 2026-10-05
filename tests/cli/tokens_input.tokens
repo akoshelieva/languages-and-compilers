@@ -1,0 +1,10 @@
+1:1 keyword bool
+1:6 identifier a
+1:7 block {
+1:8 operator !
+1:9 keyword false
+1:14 block }
+1:15 endline \n
+2:1 keyword exit
+2:6 identifier a
+2:7 endline \n
