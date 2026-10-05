@@ -1,0 +1,20 @@
+Program
+  Decl x i32 const
+    Const 7
+  If
+    Bool true
+    Block
+      Decl x bool const
+        Bool false
+      If
+        Not
+          Var x
+        Block
+          Decl x i64 const
+            Const 3000000000
+          Exit
+            Var x
+      Exit
+        Var x
+  Exit
+    Var x
