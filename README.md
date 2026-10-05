@@ -1,7 +1,3 @@
-# Languages and Compilers - Practice 5
-
-This branch implements the Week 5 language features: `if`/`else`, nested blocks, lexical scopes, unary `!`, LLVM basic blocks, and the additional `while` task. It also keeps the Practice 2-4 syntax, type checking, widening, mutability rules, comparisons, and regression tests working.
-
 ## Compiler interface
 
 The documented entry point is:
@@ -38,8 +34,6 @@ Practice 5 tests cover, among other cases: `if` without `else`, nested `if`, cro
 
 ## LLVM inspection commands
 
-For the assignment demonstrations:
-
 ```bash
 python3 src/compiler.py tests/ok/if_else_nested.txt output.ll
 lli output.ll
@@ -49,6 +43,3 @@ opt -passes=mem2reg -S output.ll
 
 python3 src/compiler.py tests/ok/while_sum.txt output.ll
 lli output.ll
-```
-
-The mem2reg output for `both_arms_assign.txt` should contain a `phi i32` in the merge block. The `while_sum.txt` result is `55`, and its body has a back edge to the loop condition block.
