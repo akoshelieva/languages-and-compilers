@@ -1,0 +1,1 @@
+compilation error: line 2:1: cannot assign to 'a': it is not mut

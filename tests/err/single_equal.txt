@@ -1,0 +1,2 @@
+bool a{1 = 1}
+exit a
