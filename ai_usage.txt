@@ -127,3 +127,6 @@ Tested the merged code in an isolated copy: 149/149 run_tests.py,
 178/178 check.py and all four LLVM IR checker scripts passed. LLVM execution
 used clang where lli was unavailable. The user still needs to apply the files
 to the in-progress merge and run the tests in their Ubuntu environment.
+
+ChatGPT conversation:
+https://chatgpt.com/share/6acd45ca-c678-83eb-8df5-7640023bfddc
