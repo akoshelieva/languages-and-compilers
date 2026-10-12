@@ -1,0 +1,11 @@
+i64 a{10}
+bool b{true}
+bool c{false}
+bool d{a == 10}
+bool mut e{a != 10}
+e := b == d
+i32 x{15}
+i64 mut y{x}
+i64 z{x + 10}
+y := y * z + a
+exit y

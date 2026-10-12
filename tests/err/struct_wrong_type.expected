@@ -1,0 +1,1 @@
+compilation error: line 6:12: cannot initialise field 'y' of type bool with a value of type i32

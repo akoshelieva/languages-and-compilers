@@ -1,0 +1,8 @@
+struct Point
+{
+    i32 mut x
+}
+Point p{10}
+Point q{20}
+p := q
+exit 0

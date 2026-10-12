@@ -1,0 +1,5 @@
+fn bad := (i32 n) -> bool
+{
+ exit n
+}
+exit bad(2)

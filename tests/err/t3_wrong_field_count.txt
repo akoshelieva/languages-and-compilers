@@ -1,0 +1,7 @@
+struct Point
+{
+    i32 x
+    i32 y
+}
+Point p{1}
+exit 0

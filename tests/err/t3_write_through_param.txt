@@ -1,0 +1,11 @@
+struct Point
+{
+    i32 mut x
+}
+fn f := (Point p) -> i32
+{
+    p.x := 5
+    exit p.x
+}
+Point p{1}
+exit f(p)

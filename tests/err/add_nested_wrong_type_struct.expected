@@ -1,0 +1,1 @@
+compilation error: line 15:11: cannot initialise field 'center' of type Point with a value of type i32

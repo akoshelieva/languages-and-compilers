@@ -1,0 +1,17 @@
+struct Point
+{
+    i32 x
+    i32 y
+}
+struct Circle
+{
+    Point center
+    i64 radius
+}
+fn newCircle := (i32 x) -> Circle
+{
+    Point p{x, 6}
+    Circle c{p, 9}
+    exit c
+}
+exit newCircle(21).center.x

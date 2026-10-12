@@ -1,0 +1,7 @@
+struct Small
+{
+    i32 mut value
+}
+i64 big{2147483648}
+Small s{big}
+exit 0

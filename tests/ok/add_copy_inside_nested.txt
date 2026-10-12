@@ -1,0 +1,19 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point center
+    i64 mut radius
+}
+struct Ring
+{
+    Circle outer
+    Circle inner
+}
+Point p{2, 4}
+Ring r{{p, 5}, {p, 6}}
+i64 total{r.outer.center.x + r.inner.center.y + r.outer.radius + r.inner.radius}
+exit total

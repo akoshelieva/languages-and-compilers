@@ -1,0 +1,7 @@
+fn plus := (i64 a, i64 b) -> i64
+{
+    i64 result{a + b}
+    exit result
+}
+i32 value{11}
+exit plus(value, 31)

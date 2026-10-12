@@ -1,0 +1,16 @@
+struct Point
+{
+    i32 x
+    i32 y
+}
+fn make := (i32 x, i32 y) -> Point
+{
+    Point p{x, y}
+    exit p
+}
+fn sum := (Point p) -> i32
+{
+    i32 r{p.x + p.y}
+    exit r
+}
+exit sum(make(18, 7))

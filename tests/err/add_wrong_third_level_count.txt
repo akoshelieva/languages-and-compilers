@@ -1,0 +1,16 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point center
+    i64 mut radius
+}
+struct Ring
+{
+    Circle inner
+}
+Ring r{{{1, 2, 3}, 4}}
+exit 0

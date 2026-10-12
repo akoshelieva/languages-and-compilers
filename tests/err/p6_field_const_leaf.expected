@@ -1,0 +1,1 @@
+compilation error: line 6:3: cannot assign through field 'x': it is not mut

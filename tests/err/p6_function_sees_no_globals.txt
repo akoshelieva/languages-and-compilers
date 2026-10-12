@@ -1,0 +1,6 @@
+fn wrong := () -> i32
+{
+ exit x
+}
+i32 x{8}
+exit wrong()

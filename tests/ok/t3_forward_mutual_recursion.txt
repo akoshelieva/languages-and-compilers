@@ -1,0 +1,17 @@
+fn even := (i32 n) -> bool
+{
+    if n == 0
+    {
+        exit true
+    }
+    exit odd(n - 1)
+}
+fn odd := (i32 n) -> bool
+{
+    if n == 0
+    {
+        exit false
+    }
+    exit even(n - 1)
+}
+exit even(10)

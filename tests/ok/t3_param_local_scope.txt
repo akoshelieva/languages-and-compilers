@@ -1,0 +1,7 @@
+fn f := (i32 x) -> i32
+{
+    i32 y{x + 5}
+    exit y
+}
+i32 x{100}
+exit f(3)

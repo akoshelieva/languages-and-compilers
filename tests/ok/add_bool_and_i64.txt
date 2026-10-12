@@ -1,0 +1,12 @@
+struct Status
+{
+    bool healthy
+    i64 count
+}
+struct Report
+{
+    Status status
+    bool visible
+}
+Report r{{true, 12}, false}
+exit r.status.healthy

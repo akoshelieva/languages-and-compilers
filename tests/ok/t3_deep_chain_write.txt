@@ -1,0 +1,22 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point mut center
+    i32 mut radius
+}
+struct Wrapper
+{
+    Circle mut circle
+    i32 mut factor
+}
+Point p{8, 11}
+Circle c{p, 4}
+Wrapper mut w{c, 2}
+w.circle.center.x := 31
+w.circle.radius := 9
+i32 sum{w.circle.center.x + w.circle.radius}
+exit sum

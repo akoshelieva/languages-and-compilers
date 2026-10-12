@@ -1,0 +1,19 @@
+struct Point
+{
+    i32 x
+    i32 y
+}
+struct Circle
+{
+    Point center
+    i32 radius
+}
+struct Wrapper
+{
+    Circle circle
+    i32 factor
+}
+Point p{8, 11}
+Circle c{p, 4}
+Wrapper w{c, 2}
+exit w.circle.center.y

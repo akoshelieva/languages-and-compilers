@@ -1,0 +1,6 @@
+fn inc := (i32 n) -> i32
+{
+    i32 result{n + 1}
+    exit result
+}
+exit inc(inc(inc(4)))
