@@ -1,0 +1,33 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point center
+    i32 mut radius
+}
+fn add := (i32 a, i32 b) -> i32
+{
+    i32 sum{a + b}
+    exit sum
+}
+fn isXZero := (Point p) -> bool
+{
+    bool zero{p.x == 0}
+    exit zero
+}
+fn moved := (Point p, i32 dx) -> Point
+{
+    Point q{p.x + dx, p.y}
+    exit q
+}
+Point p{10, 20}
+Circle c{p, 5}
+i32 xCoord{c.center.x}
+bool z{isXZero(p)}
+Point mut r{moved(p, 1)}
+r := moved(r, 2)
+i32 result{add(xCoord, add(r.x, c.radius))}
+exit result

@@ -1,0 +1,1 @@
+compilation error: line 6:9: cannot initialise field 'value' of type i32 with a value of type i64

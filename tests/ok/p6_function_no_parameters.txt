@@ -1,0 +1,5 @@
+fn answer := () -> i64
+{
+    exit 42
+}
+exit answer()

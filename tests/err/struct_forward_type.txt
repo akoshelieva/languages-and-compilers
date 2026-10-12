@@ -1,0 +1,9 @@
+struct Outer
+{
+    Inner inner
+}
+struct Inner
+{
+    i32 x
+}
+exit 0

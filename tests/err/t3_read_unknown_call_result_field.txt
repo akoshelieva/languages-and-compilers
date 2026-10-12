@@ -1,0 +1,10 @@
+struct Point
+{
+    i32 x
+}
+fn make := () -> Point
+{
+    Point p{1}
+    exit p
+}
+exit make().z

@@ -1,0 +1,9 @@
+fn foo := () -> i32
+{
+ exit 1
+}
+fn foo := () -> i32
+{
+ exit 2
+}
+exit foo()

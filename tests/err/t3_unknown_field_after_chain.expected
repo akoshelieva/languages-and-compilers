@@ -1,0 +1,1 @@
+compilation error: line 11:15: unknown field 'z' in struct 'Point'

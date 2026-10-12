@@ -1,0 +1,14 @@
+struct Leaf
+{
+    i32 val
+}
+struct Branch
+{
+    Leaf leaf
+}
+struct Root
+{
+    Branch branch
+}
+Root r{{{19}}}
+exit r.branch.leaf.val

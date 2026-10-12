@@ -1,0 +1,19 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point mut center
+    i32 mut radius
+}
+struct Pair
+{
+    Circle mut first
+    Circle mut second
+}
+Point p{1, 2}
+Circle c{p, 5}
+Pair pair{c, c}
+exit 5

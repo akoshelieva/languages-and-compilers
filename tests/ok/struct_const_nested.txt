@@ -1,0 +1,11 @@
+struct Inner
+{
+    i32 val
+}
+struct Outer
+{
+    Inner nested
+}
+Inner i{1}
+Outer o{i}
+exit 8

@@ -1,13 +1,19 @@
-program     ::= { statement NL } exit [ NL ]
+program     ::= { struct } { fn } { statement NL } exit [ NL ]
+struct      ::= "struct" ident NL "{" NL field_decl { field_decl } "}" NL
+field_decl  ::= type [ "mut" ] ident NL
+fn          ::= "fn" ident ":=" "(" [ type ident { "," type ident } ] ")" "->" type NL block
+block       ::= "{" NL { statement NL | exit NL } "}" NL
 statement   ::= decl | assign | if | while
-decl        ::= type [ "mut" ] ident "{" expr "}"
-type        ::= "i32" | "i64" | "bool"
-assign      ::= ident ":=" expr
+decl        ::= type [ "mut" ] ident "{" [ init { "," init } ] "}"
+init        ::= expr | "{" [ init { "," init } ] "}"
+type        ::= "i32" | "i64" | "bool" | ident
+assign      ::= ident { "." ident } ":=" expr
 exit        ::= "exit" factor
 if          ::= "if" expr NL block [ "else" NL block ]
 while       ::= "while" expr NL block
-block       ::= "{" NL { statement NL } [ exit NL ] "}" NL
 expr        ::= arith [ ( "==" | "!=" ) arith ]
 arith       ::= term { ( "+" | "-" ) term }
 term        ::= factor { "*" factor }
-factor      ::= number | "true" | "false" | ident | "!" factor
+factor      ::= number | "true" | "false" | ident
+              | ident { "." ident } | call { "." ident } | "!" factor
+call        ::= ident "(" [ expr { "," expr } ] ")"

@@ -1,45 +1,59 @@
-## Compiler interface
+# languages-and-compilers — practice 6
 
-The documented entry point is:
+Compiler for the language developed across Practices 1–6. The implementation is
+in `src/compiler.py`; the root `compiler.py` is a compatibility entry point.
+
+## Requirements
+
+Python 3, `llvmlite`, and either LLVM `lli` or `clang` to execute generated IR.
+Code generation uses `llvmlite.ir`; the LLVM text is emitted with `str(module)`.
+
+## Commands
 
 ```bash
-python3 src/compiler.py input.txt output.ll
-python3 src/compiler.py --ast input.txt
-python3 src/compiler.py --tokens input.txt
+python3 compiler.py tests/ok/p6_full_program_28.txt output.ll
+lli output.ll
+
+python3 compiler.py tests/ok/p6_nested_initializer_ring.txt output.ll
+lli output.ll
+
+python3 compiler.py --ast tests/ok/if_else_nested.txt
+python3 compiler.py --tokens tests/cli/tokens_input.txt
 ```
 
-`compiler.py` at the repository root is retained as a compatibility wrapper for earlier practices, so the same three commands also work with `python3 compiler.py ...`.
+If `lli` is unavailable, run `clang output.ll -o program && ./program`.
+The nested `Ring` sample prints `Program exit with result 36`.
 
-The compiler uses `llvmlite.ir` to build LLVM IR. It does not assemble IR from strings; `str(module)` is used only when writing the finished module.
+## Language
 
-## Practice 5 language
+The language supports `i32`, `i64`, `bool`, variable declarations and
+assignments, arithmetic, comparisons and `!`. Statements can use nested `if`,
+`else` and `while` blocks with lexical scopes and shadowing. Blocks may end in
+`exit`; all local storage slots are allocated in LLVM function entry blocks.
 
-A block starts with `{` on its own line and ends with `}` on its own line. `if` and `while` keep their condition on the keyword line. `else` is optional and also stands on its own line. Blocks may nest and may finish with `exit` as their last line.
+Practice 6 adds structs with `mut` fields, functions with typed parameters and
+results, struct-valued arguments and returns, field chains, and nested struct
+initialisers such as `Circle c{{10, 20}, 5}`. Struct field access uses resolved
+indexes with `getelementptr`, and nested aggregate initialisation uses
+`insertvalue`. Function calls, recursion and forward calls are supported.
 
-`!` binds to the factor immediately after it. Conditions of `if` and `while`, and operands of `!`, must be `bool`. Each block creates a semantic scope frame: declarations are checked only against the innermost frame, lookup walks outward, and shadowing may change the type.
-
-Code generation creates LLVM basic blocks for branches and loops. Every variable slot is allocated in the function entry block, including declarations found in nested source blocks. Branch arms and loop bodies receive only the terminators they need, and `exit` terminates the current LLVM block with `ret`.
+Use `--ast` to print the parsed tree without a semantic type check. Use
+`--tokens` to print tokens without modifying the input file.
 
 ## Tests
 
-Run the complete regression suite from the repository root:
-
 ```bash
 python3 check.py
+python3 run_tests.py
+python3 tests/check_struct_ir.py
+python3 tests/check_functions_ir.py
+python3 tests/check_task3_ir.py
+python3 tests/check_nested_init_ir.py
 ```
 
-The runner discovers all source/golden-file pairs under `tests/`, compiles valid programs, rejects invalid programs, and diffs exact output. It also checks every committed `.ast` golden file and the `--tokens` regression that verifies the input file is not modified or deleted. For generated IR, the runner uses `lli` when available and falls back to `clang` when `lli` is not installed.
+`check.py` verifies golden-output, diagnostic, CLI token and AST fixtures.
+`run_tests.py` covers valid programs, rejected programs and LLVM verification.
+Both use `lli` when present and fall back to `clang` for execution.
 
-Practice 5 tests cover, among other cases: `if` without `else`, nested `if`, cross-type shadowing, `exit` inside an arm, `!` in conditions, values assigned in both arms and read afterward, invalid conditions, invalid `!`, scope leaks, same-scope redeclaration, braces on the `if` line, empty blocks, and `while`.
-
-## LLVM inspection commands
-
-```bash
-python3 src/compiler.py tests/ok/if_else_nested.txt output.ll
-lli output.ll
-
-python3 src/compiler.py tests/ok/both_arms_assign.txt output.ll
-opt -passes=mem2reg -S output.ll
-
-python3 src/compiler.py tests/ok/while_sum.txt output.ll
-lli output.ll
+Submit `src/`, `tests/` and `ai_usage.txt` on branch `practice-6`; open a pull
+request into `main` with `vovaskochko` as reviewer.

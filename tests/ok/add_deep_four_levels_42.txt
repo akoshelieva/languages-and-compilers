@@ -1,0 +1,23 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point center
+    i64 mut radius
+}
+struct Ring
+{
+    Circle left
+    Circle right
+}
+struct Holder
+{
+    Ring ring
+    i32 suffix
+}
+Holder h{{{{3, 4}, 5}, {{6, 7}, 8}}, 9}
+i64 total{h.ring.left.center.x + h.ring.left.center.y + h.ring.left.radius + h.ring.right.center.x + h.ring.right.center.y + h.ring.right.radius + h.suffix}
+exit total

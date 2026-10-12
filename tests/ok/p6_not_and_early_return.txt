@@ -1,0 +1,9 @@
+fn test := (bool value) -> i32
+{
+    if !value
+    {
+        exit 11
+    }
+    exit 22
+}
+exit test(false)

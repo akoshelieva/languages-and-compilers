@@ -1,0 +1,5 @@
+fn plus := (i32 x) -> i32
+{
+    exit x + 1
+}
+exit plus(1)

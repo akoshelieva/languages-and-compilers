@@ -1,0 +1,9 @@
+fn wrong := (i32 n) -> i32
+{
+ if n
+ {
+   exit 4
+ }
+ exit 1
+}
+exit wrong(4)

@@ -1,0 +1,8 @@
+struct Numbers
+{
+    i64 mut big
+    bool flag
+}
+i32 value{42}
+Numbers n{value + 1, true}
+exit 7

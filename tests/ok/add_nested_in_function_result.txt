@@ -1,0 +1,16 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point center
+    i64 mut radius
+}
+fn make := (i32 x) -> Circle
+{
+    Circle c{{x, x + 1}, x + 2}
+    exit c
+}
+exit make(9).center.y

@@ -1,6 +1,6 @@
 import sys
 
-from src.compiler import main
+from src.compiler import *
 
 
 if __name__ == "__main__":
