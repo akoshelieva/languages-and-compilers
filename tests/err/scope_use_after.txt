@@ -1,0 +1,5 @@
+if true
+{
+ i32 inner{5}
+}
+exit inner

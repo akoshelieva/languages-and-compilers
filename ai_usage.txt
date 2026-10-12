@@ -115,3 +115,15 @@ The ZIP export had no .git directory; its original commit history was not
 recreated or claimed to be present.
 For submission, the compiler implementation was placed in src/compiler.py.
 The root compiler.py remains a compatibility entry point for previous commands.
+
+Practice 6 — integration with previously merged Practices 1–5
+Tool: OpenAI ChatGPT (GPT-6).
+Used assistance to resolve the Practice 5/6 source conflicts: retained the
+existing struct/function/nested-initialiser implementation while restoring
+if/else/while blocks, lexical scopes and the earlier CLI. Applied the
+instructor's two follow-up corrections to the closing-brace diagnostic and
+AST-only mode, and updated the affected regression fixture.
+Tested the merged code in an isolated copy: 149/149 run_tests.py,
+178/178 check.py and all four LLVM IR checker scripts passed. LLVM execution
+used clang where lli was unavailable. The user still needs to apply the files
+to the in-progress merge and run the tests in their Ubuntu environment.

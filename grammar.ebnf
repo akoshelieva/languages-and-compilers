@@ -1,29 +1,19 @@
-# Practice 6 — struct declarations, functions, field chains and nested initialisation.
-# NL denotes a physical newline. Empty lines are ignored.
-program     ::= { struct } { fn } { statement } exit
+program     ::= { struct } { fn } { statement NL } exit [ NL ]
 struct      ::= "struct" ident NL "{" NL field_decl { field_decl } "}" NL
 field_decl  ::= type [ "mut" ] ident NL
 fn          ::= "fn" ident ":=" "(" [ type ident { "," type ident } ] ")" "->" type NL block
-block       ::= "{" NL { statement | exit | if_stmt } "}" NL
-if_stmt     ::= "if" expr NL block
-statement   ::= decl | assign | if_stmt
+block       ::= "{" NL { statement NL | exit NL } "}" NL
+statement   ::= decl | assign | if | while
 decl        ::= type [ "mut" ] ident "{" [ init { "," init } ] "}"
 init        ::= expr | "{" [ init { "," init } ] "}"
 type        ::= "i32" | "i64" | "bool" | ident
 assign      ::= ident { "." ident } ":=" expr
 exit        ::= "exit" factor
-expr        ::= arith [ ("==" | "!=") arith ]
-arith       ::= term { ("+" | "-") term }
+if          ::= "if" expr NL block [ "else" NL block ]
+while       ::= "while" expr NL block
+expr        ::= arith [ ( "==" | "!=" ) arith ]
+arith       ::= term { ( "+" | "-" ) term }
 term        ::= factor { "*" factor }
-factor      ::= number | "true" | "false" | ident | field_chain
-              | call { "." ident } | "!" factor
-field_chain ::= ident "." ident { "." ident }
+factor      ::= number | "true" | "false" | ident
+              | ident { "." ident } | call { "." ident } | "!" factor
 call        ::= ident "(" [ expr { "," expr } ] ")"
-
-# Struct fields have built-in types or already declared struct types.
-# All function signatures are collected before body validation and codegen.
-# Function bodies must end with exit; exits inside if return early.
-# Calls are expressions only, not independent statements.
-# Parentheses are reserved for calls, not grouping arithmetic expressions.
-# Full object := replacement requires mut fields at every depth.
-# Every link in a field assignment must be mut.

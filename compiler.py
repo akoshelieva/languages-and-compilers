@@ -1,3 +1,5 @@
+import sys
+
 from src.compiler import *
 
 

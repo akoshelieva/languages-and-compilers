@@ -14,7 +14,7 @@ class Token:
 
 KEYWORDS = {
     b"i32", b"i64", b"bool",
-    b"mut", b"exit", b"struct", b"fn", b"if",
+    b"mut", b"exit", b"struct", b"fn", b"if", b"else", b"while",
     b"true", b"false"
 }
 
@@ -195,7 +195,12 @@ class ASTNode:
         name = type(self).__name__[:-4].lower()
         return getattr(visitor, "visit_" + name)(self)
 
-    def dump(self, prefix="", last=True, root=True):
+    def dump(self, depth=0):
+        print("  " * depth + self.label())
+        for child in self.children():
+            child.dump(depth + 1)
+
+    def dump_tree(self, prefix="", last=True, root=True):
         if root:
             print(self.label())
         else:
@@ -387,7 +392,6 @@ class BoolNode(ASTNode):
 
 
 class NestedInitNode(ASTNode):
-    """Brace-delimited value for a struct field (not a general expression)."""
     def __init__(self, line, col, initializers):
         self.line, self.col = line, col
         self.initializers = initializers
@@ -428,16 +432,46 @@ class FunctionNode(ASTNode):
         return self.params + self.body
 
 
-class IfNode(ASTNode):
-    def __init__(self, line, col, condition, body):
+class BlockNode(ASTNode):
+    def __init__(self, line, col, statements):
         self.line, self.col = line, col
-        self.condition, self.body = condition, body
+        self.statements = statements
+
+    def label(self):
+        return "Block"
+
+    def children(self):
+        return self.statements
+
+
+class IfNode(ASTNode):
+    def __init__(self, line, col, condition, body, else_block=None):
+        self.line, self.col = line, col
+        self.condition = condition
+        self.body = body
+        self.else_block = else_block
 
     def label(self):
         return "If"
 
     def children(self):
-        return [self.condition] + self.body
+        children = [self.condition, self.body]
+        if self.else_block is not None:
+            children.append(self.else_block)
+        return children
+
+
+class WhileNode(ASTNode):
+    def __init__(self, line, col, condition, body):
+        self.line, self.col = line, col
+        self.condition = condition
+        self.body = body
+
+    def label(self):
+        return "While"
+
+    def children(self):
+        return [self.condition, self.body]
 
 
 class FieldAccessNode(ASTNode):
@@ -475,7 +509,7 @@ class NotNode(ASTNode):
         self.type = None
 
     def label(self):
-        return "Not !"
+        return "Not"
 
     def children(self):
         return [self.operand]
@@ -531,6 +565,8 @@ class Parser:
             not self.peek()
             or self.peek().text != text
         ):
+            if text == "}" and self.peek() is None:
+                self.fail("expected '}', found end of line")
             self.fail(f"expected '{text}'")
 
         return self.eat()
@@ -551,7 +587,6 @@ class Parser:
         self.fail("expected a type")
 
     def parse_struct(self, index):
-        """Parse a multi-line struct declaration; return node and next line index."""
         self.toks, self.pos = self.lines[index], 0
         self.expect_text("struct")
         name = self.expect_kind("identifier", "a struct name")
@@ -596,16 +631,24 @@ class Parser:
 
         raise CompileError(f"line {name.line}:{name.col}: unclosed struct '{name.text}'")
 
-    def parse_block(self, index):
-        """Read a brace-delimited block, allowing nested if statements."""
+    def parse_block(self, index, keyword=None):
         while index < len(self.lines) and not self.lines[index]:
             index += 1
         if index >= len(self.lines):
+            if keyword is not None:
+                raise CompileError(
+                    f"line {keyword.line}:{keyword.col}: expected '{{' on its own line "
+                    f"after '{keyword.text}', found end of input")
             raise CompileError("line 1:1: expected '{' for block")
         self.toks, self.pos = self.lines[index], 0
-        self.expect_text("{")
+        if self.peek().text != "{":
+            if keyword is not None:
+                self.fail(f"expected '{{' on its own line after '{keyword.text}', "
+                          f"got '{self.peek().text}'")
+            self.fail("expected '{'")
+        opening = self.eat()
         if self.peek():
-            self.fail("expected newline after '{'")
+            self.fail("'{' must be on its own line")
         index += 1
         body = []
         has_exit = False
@@ -618,33 +661,57 @@ class Parser:
             if line[0].text == "}":
                 self.eat()
                 if self.peek():
-                    self.fail("unexpected token after '}'")
-                return body, index + 1
+                    self.fail("'}' must be on its own line")
+                if not body:
+                    raise CompileError(f"line {opening.line}:{opening.col}: empty block")
+                return BlockNode(opening.line, opening.col, body), index + 1
             if has_exit:
-                self.fail("nothing is allowed after exit")
+                self.fail("statement after 'exit' in the same block")
             if line[0].text in ("struct", "fn"):
                 self.fail("structs and functions are only allowed at top level")
-            if line[0].text == "if":
-                if_node, index = self.parse_if(index)
-                body.append(if_node)
-                continue
-            stmt = self.parse_statement()
-            if self.peek():
-                self.fail(f"unexpected '{self.peek().text}' after the statement")
+            if line[0].text == "else":
+                self.fail("'else' without an 'if'")
+            if line[0].text in ("if", "while"):
+                if line[0].text == "if":
+                    stmt, index = self.parse_if(index)
+                else:
+                    stmt, index = self.parse_while(index)
+            else:
+                stmt = self.parse_statement()
+                if self.peek():
+                    self.fail(f"unexpected '{self.peek().text}' after the statement")
+                index += 1
             body.append(stmt)
             has_exit = isinstance(stmt, ExitNode)
-            index += 1
-        t = self.lines[index - 1][-1]
-        raise CompileError(f"line {t.line}:{t.col}: unclosed block")
+        raise CompileError(f"line {opening.line}:{opening.col}: '{{' is never closed")
 
     def parse_if(self, index):
         self.toks, self.pos = self.lines[index], 0
-        t = self.expect_text("if")
+        token = self.expect_text("if")
         condition = self.parse_expr()
         if self.peek():
-            self.fail("unexpected token after if condition")
-        body, next_index = self.parse_block(index + 1)
-        return IfNode(t.line, t.col, condition, body), next_index
+            self.fail(f"unexpected '{self.peek().text}' after the statement")
+        body, next_index = self.parse_block(index + 1, token)
+        look = next_index
+        while look < len(self.lines) and not self.lines[look]:
+            look += 1
+        else_block = None
+        if look < len(self.lines) and self.lines[look][0].text == "else":
+            self.toks, self.pos = self.lines[look], 0
+            else_token = self.eat()
+            if self.peek():
+                self.fail("unexpected token after 'else'")
+            else_block, next_index = self.parse_block(look + 1, else_token)
+        return IfNode(token.line, token.col, condition, body, else_block), next_index
+
+    def parse_while(self, index):
+        self.toks, self.pos = self.lines[index], 0
+        token = self.expect_text("while")
+        condition = self.parse_expr()
+        if self.peek():
+            self.fail("unexpected token after while condition")
+        body, next_index = self.parse_block(index + 1, token)
+        return WhileNode(token.line, token.col, condition, body), next_index
 
     def parse_function(self, index):
         self.toks, self.pos = self.lines[index], 0
@@ -667,11 +734,11 @@ class Parser:
         if self.peek():
             self.fail("expected newline after function signature")
         body, next_index = self.parse_block(index + 1)
-        if not body or not isinstance(body[-1], ExitNode):
+        if not body.statements or not isinstance(body.statements[-1], ExitNode):
             raise CompileError(
                 f"line {name.line}:{name.col}: function '{name.text}' must end with exit")
         return FunctionNode(name.line, name.col, name.text, params,
-                            result.text, body), next_index
+                            result.text, body.statements), next_index
 
     def parse_statement(self):
         first = self.peek()
@@ -684,6 +751,8 @@ class Parser:
             return self.parse_assign()
         if first.text == "exit":
             return self.parse_exit()
+        if first.text == "else":
+            self.fail("'else' without an 'if'")
         self.fail(f"cannot start statement with '{first.text}'")
 
     def parse_program(self):
@@ -718,6 +787,8 @@ class Parser:
             phase = "statements"
             if first.text == "if":
                 stmt, index = self.parse_if(index)
+            elif first.text == "while":
+                stmt, index = self.parse_while(index)
             else:
                 stmt = self.parse_statement()
                 if self.peek():
@@ -927,6 +998,7 @@ class Parser:
 class SemanticChecker:
     def __init__(self):
         self.symbols = {}
+        self.scopes = [self.symbols]
         self.structs = {}
         self.functions = {}
         self.current_function = None
@@ -974,28 +1046,56 @@ class SemanticChecker:
             function.accept(self)
 
         self.symbols = {}
+        self.scopes = [self.symbols]
         for statement in node.statements:
             statement.accept(self)
 
         node.exit_node.accept(self)
 
     def visit_function(self, node):
-        saved_symbols, saved_function = self.symbols, self.current_function
-        self.symbols = {param.name: param for param in node.params}
+        old_scopes, old_symbols, old_function = self.scopes, self.symbols, self.current_function
+        self.symbols = {}
+        self.scopes = [self.symbols]
         self.current_function = node
+        for param in node.params:
+            if param.name in self.symbols:
+                self.fail(param, f"parameter '{param.name}' is already declared")
+            self.symbols[param.name] = param
         for statement in node.body:
             statement.accept(self)
-        self.symbols, self.current_function = saved_symbols, saved_function
+        self.scopes, self.symbols, self.current_function = old_scopes, old_symbols, old_function
 
     def visit_if(self, node):
-        condition_type = node.condition.accept(self)
-        if condition_type != "bool":
-            self.fail(node.condition, "if condition must have type bool")
-        saved_symbols = self.symbols
-        self.symbols = dict(saved_symbols)
-        for statement in node.body:
-            statement.accept(self)
-        self.symbols = saved_symbols
+        cond_type = node.condition.accept(self)
+        if cond_type != "bool":
+            if self.current_function is not None:
+                self.fail(node.condition, "if condition must have type bool")
+            self.fail(node, f"the condition of 'if' must be bool, got {cond_type}")
+        node.body.accept(self)
+        if node.else_block is not None:
+            node.else_block.accept(self)
+
+    def lookup(self, node, name):
+        for scope in reversed(self.scopes):
+            if name in scope:
+                return scope[name]
+        self.fail(node, f"variable '{name}' is used before its declaration")
+
+    def visit_block(self, node):
+        self.scopes.append({})
+        self.symbols = self.scopes[-1]
+        try:
+            for stmt in node.statements:
+                stmt.accept(self)
+        finally:
+            self.scopes.pop()
+            self.symbols = self.scopes[-1]
+
+    def visit_while(self, node):
+        cond_type = node.condition.accept(self)
+        if cond_type != "bool":
+            self.fail(node, f"the condition of 'while' must be bool, got {cond_type}")
+        node.body.accept(self)
 
     def known_type(self, name):
         return name in ("i32", "i64", "bool") or name in self.structs
@@ -1028,12 +1128,6 @@ class SemanticChecker:
         raise CompileError(f"line {node.brace_line}:{node.brace_col}: {message}")
 
     def check_field_init(self, init, type_name, name, already_checked=False):
-        """Validate a field recursively using its declared (contextual) type.
-
-        Brace-delimited values are legal only for struct fields.  Report an
-        invalid brace or field count at the opening brace at the *current*
-        nesting level, including arbitrarily deeply nested structures.
-        """
         if isinstance(init, NestedInitNode):
             if type_name not in self.structs:
                 self.fail(init, f"nested '{{}}' requires a struct field, got {type_name}")
@@ -1053,7 +1147,7 @@ class SemanticChecker:
 
     def visit_decl(self, node):
         if node.name in self.symbols:
-            self.fail(node, f"variable '{node.name}' is already declared")
+            self.fail(node, f"variable '{node.name}' is already declared in this block")
         if not self.known_type(node.type_name):
             self.fail(node, f"unknown type '{node.type_name}'")
         if node.type_name in self.structs:
@@ -1099,9 +1193,7 @@ class SemanticChecker:
             if not self.fully_mutable(node.type_name):
                 self.fail(node, "cannot replace struct field: some struct fields are not mut")
         else:
-            if node.name not in self.symbols:
-                self.fail(node, f"variable '{node.name}' is used before its declaration")
-            node.decl = self.symbols[node.name]
+            node.decl = self.lookup(node, node.name)
             node.type_name = node.decl.type_name
             if not node.decl.mutable:
                 self.fail(node, f"cannot assign to '{node.name}': it is not mut")
@@ -1149,7 +1241,7 @@ class SemanticChecker:
     def visit_not(self, node):
         operand_type = node.operand.accept(self)
         if operand_type != "bool":
-            self.fail(node, "operator '!' requires bool")
+            self.fail(node, f"cannot apply '!' to {operand_type}")
         node.type = "bool"
         return node.type
 
@@ -1209,14 +1301,7 @@ class SemanticChecker:
         return node.type
 
     def visit_var(self, node):
-        if node.name not in self.symbols:
-            self.fail(
-                node,
-                f"variable '{node.name}' "
-                "is used before its declaration"
-            )
-
-        node.decl = self.symbols[node.name]
+        node.decl = self.lookup(node, node.name)
         node.type = node.decl.type_name
 
         return node.type
@@ -1408,6 +1493,36 @@ class CodeGen:
 
         return value
 
+    def entry_alloca(self, type_name, name):
+        block = self.builder.function.entry_basic_block
+        insert = ir.IRBuilder(block)
+        insert.position_at_start(block)
+        pointer = insert.alloca(self.llvm_type(type_name), name=name)
+        if self.builder.block is block:
+            self.builder.position_at_end(block)
+        return pointer
+
+    def visit_block(self, node):
+        for statement in node.statements:
+            if self.builder.block.is_terminated:
+                break
+            statement.accept(self)
+
+    def visit_while(self, node):
+        function = self.builder.function
+        cond_block = function.append_basic_block("while.cond")
+        body_block = function.append_basic_block("while.body")
+        end_block = function.append_basic_block("while.end")
+        self.builder.branch(cond_block)
+        self.builder.position_at_end(cond_block)
+        cond = node.condition.accept(self)
+        self.builder.cbranch(cond, body_block, end_block)
+        self.builder.position_at_end(body_block)
+        node.body.accept(self)
+        if not self.builder.block.is_terminated:
+            self.builder.branch(cond_block)
+        self.builder.position_at_end(end_block)
+
     def visit_program(self, node):
         for struct in node.structs:
             self.struct_types[struct.name] = self.module.context.get_identified_type(
@@ -1434,10 +1549,11 @@ class CodeGen:
         self.builder = ir.IRBuilder(node.ir_function.append_basic_block("entry"))
         for parameter, value in zip(node.params, node.ir_function.args):
             value.name = parameter.name
-            parameter.ir_ptr = self.builder.alloca(self.llvm_type(parameter.type_name),
-                                                   name=parameter.name + ".slot")
+            parameter.ir_ptr = self.entry_alloca(parameter.type_name, parameter.name + ".slot")
             self.builder.store(value, parameter.ir_ptr)
         for statement in node.body:
+            if self.builder.block.is_terminated:
+                break
             statement.accept(self)
         self.builder, self.current_function = saved_builder, saved_function
 
@@ -1445,13 +1561,19 @@ class CodeGen:
         condition = node.condition.accept(self)
         function = self.builder.function
         then_block = function.append_basic_block("if.then")
+        else_block = (function.append_basic_block("if.else")
+                      if node.else_block is not None else None)
         end_block = function.append_basic_block("if.end")
-        self.builder.cbranch(condition, then_block, end_block)
+        self.builder.cbranch(condition, then_block, else_block or end_block)
         self.builder.position_at_end(then_block)
-        for statement in node.body:
-            statement.accept(self)
+        node.body.accept(self)
         if not self.builder.block.is_terminated:
             self.builder.branch(end_block)
+        if else_block is not None:
+            self.builder.position_at_end(else_block)
+            node.else_block.accept(self)
+            if not self.builder.block.is_terminated:
+                self.builder.branch(end_block)
         self.builder.position_at_end(end_block)
 
     def visit_structdecl(self, node):
@@ -1459,10 +1581,7 @@ class CodeGen:
             *(self.llvm_type(field.type_name) for field in node.fields))
 
     def visit_decl(self, node):
-        node.ir_ptr = self.builder.alloca(
-            self.llvm_type(node.type_name),
-            name=node.name
-        )
+        node.ir_ptr = self.entry_alloca(node.type_name, node.name)
 
         if node.struct_fields is not None and not node.struct_copy:
             for field, init in zip(node.struct_fields, node.initializers):
@@ -1482,7 +1601,6 @@ class CodeGen:
             self.builder.store(value, node.ir_ptr)
 
     def field_ptr(self, node):
-        """Produce an address using only indexes resolved in SemanticChecker."""
         if isinstance(node, VarNode):
             return node.decl.ir_ptr
         if isinstance(node, FieldAccessNode):
@@ -1492,7 +1610,7 @@ class CodeGen:
                 [ir.Constant(self.I32, 0), ir.Constant(self.I32, node.field.index)],
                 inbounds=True, name=f"field.{node.field.index}.ptr")
         value = node.accept(self)
-        tmp = self.builder.alloca(self.llvm_type(node.type), name="field.tmp")
+        tmp = self.entry_alloca(node.type, "field.tmp")
         self.builder.store(value, tmp)
         return tmp
 
@@ -1512,12 +1630,6 @@ class CodeGen:
         return self.builder.not_(value, name="bool.not")
 
     def visit_nestedinit(self, node):
-        """Build a by-value nested struct, field by field, with LLVM IRBuilder.
-
-        The semantic checker has already attached the expected struct type
-        and each resolved field index.  A child may itself be a nested brace
-        value (recursion), an ordinary expression, or a function call.
-        """
         aggregate = ir.Constant(self.llvm_type(node.type), ir.Undefined)
         for field, init in zip(node.struct_fields, node.initializers):
             value = init.accept(self)
@@ -1648,71 +1760,57 @@ class CodeGen:
         )
 
 
-def main():
-    if len(sys.argv) != 3:
-        print(
-            "usage:\n"
-            "  python3 compiler.py "
-            "input.txt output.ll\n"
-            "  python3 compiler.py "
-            "--ast input.txt",
-            file=sys.stderr
-        )
+def parse_and_check(data):
+    tree = Parser(lex(data)).parse_program()
+    tree.accept(SemanticChecker())
+    return tree
 
-        return 1
 
-    ast_mode = (
-        sys.argv[1] == "--ast"
-    )
+def dump_tokens(lines):
+    for line in lines:
+        for token in line:
+            text = "\\n" if token.kind == "endline" else token.text
+            print(f"{token.line}:{token.col} {token.kind} {text}")
 
-    if ast_mode:
-        input_path = sys.argv[2]
-        output_path = None
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if len(argv) == 2 and argv[0] in ("--tokens", "--ast"):
+        mode, input_path, output_path = argv[0], argv[1], None
+    elif len(argv) == 2 and not argv[0].startswith("--"):
+        mode, input_path, output_path = "compile", argv[0], argv[1]
     else:
-        input_path = sys.argv[1]
-        output_path = sys.argv[2]
-
-    if (
-        output_path
-        and os.path.exists(output_path)
-    ):
-        os.remove(output_path)
-
+        print("usage: python3 compiler.py [--ast|--tokens] input.txt OR "
+              "python3 compiler.py input.txt output.ll", file=sys.stderr)
+        return 1
+    if output_path is not None and os.path.abspath(input_path) == os.path.abspath(output_path):
+        print("compilation error: input and output paths must be different", file=sys.stderr)
+        return 1
     try:
-        with open(
-            input_path,
-            "rb"
-        ) as f:
-            tree = Parser(
-                lex(f.read())
-            ).parse_program()
-
-        tree.accept(
-            SemanticChecker()
-        )
-
-        if ast_mode:
+        with open(input_path, "rb") as source:
+            data = source.read()
+        tokens = lex(data)
+        if mode == "--tokens":
+            dump_tokens(tokens)
+            return 0
+        tree = Parser(tokens).parse_program()
+        if mode == "--ast":
             tree.dump()
-
-        else:
-            module = tree.accept(
-                CodeGen()
-            )
-
-            with open(
-                output_path,
-                "w"
-            ) as f:
-                f.write(str(module))
-
+            return 0
+        if os.path.exists(output_path):
+            os.remove(output_path)
+        tree.accept(SemanticChecker())
+        module = tree.accept(CodeGen())
+        with open(output_path, "w", encoding="utf-8") as result:
+            result.write(str(module))
         return 0
-
-    except CompileError as e:
-        print(
-            f"compilation error: {e}",
-            file=sys.stderr
-        )
-
+    except CompileError as error:
+        if output_path is not None and os.path.exists(output_path):
+            os.remove(output_path)
+        print(f"compilation error: {error}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"compiler I/O error: {error}", file=sys.stderr)
         return 1
 
 

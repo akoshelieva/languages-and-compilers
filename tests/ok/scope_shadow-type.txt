@@ -1,0 +1,12 @@
+i32 x{7}
+if true
+{
+ bool x{false}
+ if !x
+ {
+  i64 x{3000000000}
+  exit x
+ }
+ exit x
+}
+exit x
