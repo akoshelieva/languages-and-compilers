@@ -1,19 +1,34 @@
-program     ::= { struct } { fn } { statement NL } exit [ NL ]
-struct      ::= "struct" ident NL "{" NL field_decl { field_decl } "}" NL
-field_decl  ::= type [ "mut" ] ident NL
-fn          ::= "fn" ident ":=" "(" [ type ident { "," type ident } ] ")" "->" type NL block
-block       ::= "{" NL { statement NL | exit NL } "}" NL
-statement   ::= decl | assign | if | while
-decl        ::= type [ "mut" ] ident "{" [ init { "," init } ] "}"
-init        ::= expr | "{" [ init { "," init } ] "}"
-type        ::= "i32" | "i64" | "bool" | ident
-assign      ::= ident { "." ident } ":=" expr
-exit        ::= "exit" factor
-if          ::= "if" expr NL block [ "else" NL block ]
-while       ::= "while" expr NL block
-expr        ::= arith [ ( "==" | "!=" ) arith ]
-arith       ::= term { ( "+" | "-" ) term }
-term        ::= factor { "*" factor }
-factor      ::= number | "true" | "false" | ident
-              | ident { "." ident } | call { "." ident } | "!" factor
-call        ::= ident "(" [ expr { "," expr } ] ")"
+
+program         ::= { struct } { fn } { statement NL } exit [ NL ]
+struct          ::= "struct" ident NL "{" NL field_decl { field_decl } { member_fn } "}" NL
+field_decl      ::= type [ "mut" ] ident NL
+member_fn       ::= fn
+fn              ::= "fn" ident ":=" "(" [ type ident { "," type ident } ] ")" "->" type NL block
+block           ::= "{" NL { statement NL | exit NL } "}" NL
+statement       ::= decl | assign | if | while | print
+print           ::= "print" "(" ( string | expr ) ")"
+string          ::= '"' { any byte except '"' and NL } '"'
+
+read_call       ::= "read" "(" ")"
+decl            ::= type [ "mut" ] ident "{" [ init { "," init } ] "}"
+init            ::= expr | "{" [ init { "," init } ] "}"
+type            ::= "i32" | "i64" | "bool" | ident
+assign          ::= assign_target ":=" expr
+assign_target   ::= ident { "." ident }
+
+exit            ::= "exit" factor
+if              ::= "if" expr NL block [ "else" NL block ]
+while           ::= "while" expr NL block
+expr            ::= arith [ ( "==" | "!=" ) arith ]
+arith           ::= term { ( "+" | "-" ) term }
+term            ::= factor { "*" factor }
+factor          ::= "!" factor | number | "true" | "false" | postfix
+
+postfix         ::= ( ident | call | read_call ) { "." ident [ call_args ] }
+call            ::= ident call_args
+call_args       ::= "(" [ expr { "," expr } ] ")"
+
+
+
+
+
