@@ -2276,6 +2276,10 @@ def main(argv=None):
         print("compilation error: input and output paths must be different", file=sys.stderr)
         return 1
     try:
+
+
+        if output_path is not None and os.path.exists(output_path):
+            os.remove(output_path)
         with open(input_path, "rb") as source:
             data = source.read()
         tokens = lex(data)
@@ -2286,8 +2290,6 @@ def main(argv=None):
         if mode == "--ast":
             tree.dump()
             return 0
-        if os.path.exists(output_path):
-            os.remove(output_path)
         tree.accept(SemanticChecker())
         module = tree.accept(CodeGen())
         with open(output_path, "w", encoding="utf-8") as result:

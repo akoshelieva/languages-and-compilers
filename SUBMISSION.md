@@ -79,12 +79,12 @@ Program exit with result 2
 ### Two obligatory semantic/syntax errors with exact positions
 
 ```bash
-python compiler.py tests/p7_parser/err/field_after_method.src output.ll
+python compiler.py tests/err/p7_field_after_method.txt output.ll
 python compiler.py tests/err/p7_const_object.txt output.ll
 ```
 
 Exact diagnostics are recorded in
-`tests/p7_parser/err/field_after_method.err` and
+`tests/err/p7_field_after_method.expected` and
 `tests/err/p7_const_object.expected`, including `line:column`.
 
 ## Requirement-to-code/test traceability
@@ -126,7 +126,7 @@ Exact diagnostics are recorded in
 
 | Negative category (PDF) | Program |
 |---|---|
-| Field after member function | `tests/p7_parser/err/field_after_method.src` |
+| Field after member function | `tests/err/p7_field_after_method.txt` |
 | Mutating call on const object | `tests/err/p7_const_object.txt` |
 | Mutating call through const field | `tests/err/p7_const_field.txt` |
 | Unknown member function | `tests/err/p7_unknown_method.txt` |
@@ -141,7 +141,7 @@ quote, primitive member call, assignment to const field, recursive transitive
 mutation on const receivers, assignment to struct temporaries and their fields,
 and primitive call-result `.` error **at the dot**.
 
-## Final verification commands and results
+## Original implementation verification record
 
 Executed from the Practice 7 working tree before any local commit:
 
@@ -172,3 +172,38 @@ the Practice 6 base, excluded from staging and new commits. Note the PDF
 requires updating this file and a PR; the current user's explicit restrictions
 supersede these actions. A final real-`lli` demonstration to the instructor
 remains necessary, since this environment has no `lli` executable.
+
+## Corrected archive: final verification before the review-fix commit
+
+The four review findings have been addressed without changing language semantics:
+runner errors use binary stderr on every execution path; a missing source removes
+stale output IR; `tests/err/p7_field_after_method.txt` plus `.expected` covers
+the previously misplaced required category; and `grammar.ebnf` explicitly
+requires nonempty blocks, terminal exit, and a final exit in function bodies.
+Six regression checks cover missing input, invalid input, identical input/output,
+read-only AST/tokens, absent native backends and a failed clang build.
+
+Recheck runtime: Python 3.12.14, llvmlite 0.50.0 / LLVM 22.1.0. Native lli and
+clang are absent. To execute the existing runners unchanged, a temporary external
+adapter named lli invoked `tests/jit_run.py`; it is outside this repository and
+is NOT a native lli demonstration. Both reported adapter/backend labels refer
+to MCJIT in this recheck. The independent Additional checker also ran its direct
+JIT backend. No tool adapter is included in the submitted archive.
+
+| Command / check | Corrected result (MCJIT execution) |
+|---|---|
+| `python check.py` | 256 passed, 0 failed |
+| `python run_tests.py` | 190 passed, 0 failed |
+| `python tests/check_p7_parser_ast.py` | 23 passed, 0 failed |
+| `python tests/check_p7_member_sem_ir.py` | 38 passed, 0 failed |
+| `python tests/check_p7_io.py` | 42 passed, 0 failed |
+| `python tests/check_p7_additional.py` | 20 passed, 0 failed |
+| `python tests/check_cli_regressions.py` | 6 passed, 0 failed; no backend required |
+| Four legacy IR checkers | PASS |
+| PDF programs / exact stdout | 83, 46; read/print with input 3 4 matches PDF |
+| LLVM verifier and allocation audit | 105 valid program modules; every alloca in entry |
+| `git diff --check`, Git fsck, unchanged ai_usage | PASS |
+
+The corrected archive must still be demonstrated with native lli as required by
+the PDF. The owner must add the Practice 7 AI disclosure and perform the push/PR
+submission steps; they are intentionally not done here.

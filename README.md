@@ -7,14 +7,16 @@ history is retained in the `practice-7` branch.
 
 ## Setup (venv)
 
-Python 3.13 and `llvmlite` 0.47.0 were used for the final checks. `clang 17` was
-available; `lli` was **not** installed in the validation environment.
+The corrected archive was checked with Python 3.12.14, `llvmlite` 0.50.0
+(LLVM 22.1.0) and MCJIT. Neither native `lli` nor `clang` was installed in
+this recheck environment. The original implementation had also been checked
+with Python 3.13, `llvmlite` 0.47.0 and `clang` 17.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'llvmlite>=0.46,<0.48'
+python -m pip install 'llvmlite==0.50.0'
 python compiler.py --ast tests/ok/p7_task1_pdf.txt
 ```
 
@@ -84,13 +86,15 @@ python tests/check_p7_parser_ast.py
 python tests/check_p7_member_sem_ir.py
 python tests/check_p7_io.py
 python tests/check_p7_additional.py
+python tests/check_cli_regressions.py
 python tests/check_struct_ir.py
 python tests/check_functions_ir.py
 python tests/check_task3_ir.py
 python tests/check_nested_init_ir.py
 ```
 
-The two main runners choose `lli` if installed, otherwise `clang`; both pass
+The two main runners require native `lli` or `clang` for normal execution;
+`check.py` reports a regular failure if neither exists. Both pass
 `NAME.in` to stdin and compare **all** stdout bytes to `NAME.expected`. The
 Additional checker executes its fixtures using **MCJIT** and every available
 external execution backend (`lli`, `clang`), also checking the LLVM verifier,
@@ -101,3 +105,10 @@ See `SUBMISSION.md` for exact demo commands, observed results, limitations and a
 traceability table to tests. The PDF's submission instructions for push/PR and
 `ai_usage.txt` are intentionally **not** followed here: per user restrictions,
 no push or PR was performed, and `ai_usage.txt` was not modified or committed.
+
+The CLI removes an earlier output IR file before opening a new source in
+compile mode, including when that source is missing. `--ast` and `--tokens`
+remain read-only, and an identical input/output path is rejected before any
+file is removed. Runner diagnostics preserve binary stdout/stderr consistently,
+including a failed clang build. All seven Task 4 negative categories now have
+`.txt`/`.expected` fixtures directly under `tests/err`.

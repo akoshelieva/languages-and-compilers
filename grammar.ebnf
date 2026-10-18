@@ -3,8 +3,10 @@ program         ::= { struct } { fn } { statement NL } exit [ NL ]
 struct          ::= "struct" ident NL "{" NL field_decl { field_decl } { member_fn } "}" NL
 field_decl      ::= type [ "mut" ] ident NL
 member_fn       ::= fn
-fn              ::= "fn" ident ":=" "(" [ type ident { "," type ident } ] ")" "->" type NL block
-block           ::= "{" NL { statement NL | exit NL } "}" NL
+fn              ::= "fn" ident ":=" "(" [ type ident { "," type ident } ] ")" "->" type NL function_block
+function_block  ::= "{" NL { statement NL } exit NL "}" NL
+block           ::= "{" NL ( exit NL | statement NL { statement NL } [ exit NL ] ) "}" NL
+
 statement       ::= decl | assign | if | while | print
 print           ::= "print" "(" ( string | expr ) ")"
 string          ::= '"' { any byte except '"' and NL } '"'

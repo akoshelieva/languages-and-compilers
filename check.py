@@ -56,7 +56,7 @@ def execute_ir(ir_path, stdin=None):
     clang = shutil.which("clang")
     if clang:
         executable = ir_path.with_suffix("")
-        compiled = run([clang, ir_path, "-o", executable])
+        compiled = run([clang, ir_path, "-o", executable], binary=True)
         if compiled.returncode != 0:
             return compiled
         try:
@@ -70,8 +70,8 @@ def execute_ir(ir_path, stdin=None):
     return subprocess.CompletedProcess(
         args=["lli"],
         returncode=127,
-        stdout="",
-        stderr="neither lli nor clang is available to execute LLVM IR\n",
+        stdout=b"",
+        stderr=b"neither lli nor clang is available to execute LLVM IR\n",
     )
 
 
