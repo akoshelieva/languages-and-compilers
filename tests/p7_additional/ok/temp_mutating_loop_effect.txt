@@ -1,0 +1,21 @@
+struct Point
+{
+    i32 mut x
+    fn fresh := () -> Point
+    {
+        Point q{x}
+        exit q
+    }
+    fn add := (i32 n) -> i32
+    {
+        x := x + n
+        exit x
+    }
+    fn check := () -> i32
+    {
+        i32 a{fresh().add(2)}
+        exit a
+    }
+}
+Point p{7}
+exit p.check()

@@ -1,0 +1,11 @@
+struct P
+{
+    i32 x
+    fn bad := () -> i32
+    {
+        exit total
+    }
+}
+i32 total{9}
+P p{1}
+exit p.bad()

@@ -1,0 +1,23 @@
+struct Point
+{
+    i32 mut x
+}
+struct Inner
+{
+    Point mut p
+}
+struct Outer
+{
+    Inner mut inner
+    fn update := () -> i32
+    {
+        inner.p.x := 9
+        exit inner.p.x
+    }
+}
+Point p{1}
+Inner i{p}
+Outer mut o{i}
+i32 a{o.update()}
+i32 resultValue{a + o.inner.p.x}
+exit resultValue

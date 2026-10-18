@@ -1,0 +1,19 @@
+struct Point
+{
+    i32 mut x
+    fn get := () -> i32
+    {
+        exit x
+    }
+}
+struct Outer
+{
+    Point child
+    fn get := () -> i32
+    {
+        exit child.get()
+    }
+}
+Point p{6}
+Outer o{p}
+exit o.get()

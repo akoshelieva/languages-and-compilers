@@ -1,0 +1,22 @@
+struct Point
+{
+    i32 mut x
+    fn moved := () -> Point
+    {
+        Point p{x}
+        exit p
+    }
+    fn shift := () -> i32
+    {
+        x := x + 1
+        exit x
+    }
+    fn check := () -> i32
+    {
+        i32 y{moved().shift()}
+        exit y
+    }
+}
+Point p{6}
+print(p.check())
+exit p.x

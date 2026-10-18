@@ -1,0 +1,19 @@
+struct Counter
+{
+    i32 mut x
+    fn f := (i32 n) -> i32
+    {
+        if n == 0
+        {
+            x := x + 1
+            exit x
+        }
+        exit g(n - 1)
+    }
+    fn g := (i32 n) -> i32
+    {
+        exit f(n)
+    }
+}
+Counter c{0}
+exit c.g(1)

@@ -15,13 +15,12 @@ ROOT = Path(__file__).resolve().parent
 TESTS = ROOT / "tests"
 
 
-def run(command, cwd=ROOT):
+def run(command, cwd=ROOT, stdin=None, binary=False):
     return subprocess.run(
-        [str(part) for part in command],
-        cwd=cwd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
+        [str(part) for part in command], cwd=cwd,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        input=stdin, text=not binary,
+        timeout=30,
     )
 
 
@@ -49,10 +48,10 @@ def diff_text(expected, actual, expected_name, actual_name):
     )
 
 
-def execute_ir(ir_path):
+def execute_ir(ir_path, stdin=None):
     lli = shutil.which("lli")
     if lli:
-        return run([lli, ir_path])
+        return run([lli, ir_path], stdin=stdin, binary=True)
 
     clang = shutil.which("clang")
     if clang:
@@ -61,7 +60,7 @@ def execute_ir(ir_path):
         if compiled.returncode != 0:
             return compiled
         try:
-            return run([executable])
+            return run([executable], stdin=stdin, binary=True)
         finally:
             try:
                 executable.unlink()
@@ -86,8 +85,8 @@ def golden_for_source(source):
 
 
 def test_program(source, golden):
-    expected = golden.read_text(encoding="utf-8")
-    expects_error = golden.suffix == ".err" or expected.startswith("compilation error:")
+    expected = golden.read_bytes()
+    expects_error = golden.suffix == ".err" or expected.startswith(b"compilation error:")
 
     with tempfile.TemporaryDirectory(prefix="practice5-") as temp_dir:
         output = Path(temp_dir) / "output.ll"
@@ -98,7 +97,7 @@ def test_program(source, golden):
                 return False, "compiler accepted an invalid program\n"
             if output.exists():
                 return False, "compiler left LLVM IR for an invalid program\n"
-            actual = compiled.stderr
+            actual = compiled.stderr.encode('utf-8')
         else:
             if compiled.returncode != 0:
                 return False, "compiler rejected a valid program:\n" + compiled.stderr
@@ -106,13 +105,15 @@ def test_program(source, golden):
                 return False, "compiler wrote unexpected stderr:\n" + compiled.stderr
             if not output.exists():
                 return False, "compiler did not create LLVM IR\n"
-            executed = execute_ir(output)
+            input_file = source.with_suffix(".in")
+            stdin = input_file.read_bytes() if input_file.exists() else None
+            executed = execute_ir(output, stdin=stdin)
             if executed.returncode != 0:
-                return False, "LLVM execution failed:\n" + executed.stderr
+                return False, "LLVM execution failed:\n" + executed.stderr.decode(errors="replace")
             actual = executed.stdout
 
     if actual != expected:
-        return False, diff_text(expected, actual, str(golden), "actual")
+        return False, f"expected stdout: {expected!r}\nactual stdout: {actual!r}"
     return True, ""
 
 

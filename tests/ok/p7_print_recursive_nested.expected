@@ -1,0 +1,3 @@
+Q{first: P{num: 1, flag: false}, second: P{num: 2, flag: true}, big: 9000000000}
+P{num: 2, flag: true}
+Program exit with result 0

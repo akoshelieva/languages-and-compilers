@@ -1,0 +1,1 @@
+compilation error: line 11:8: mutating member call 'shift' on const object 'p'

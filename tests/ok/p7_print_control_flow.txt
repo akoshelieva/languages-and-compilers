@@ -1,0 +1,22 @@
+fn printer := (i32 v) -> i32
+{
+    if v == 2
+    {
+        print("then")
+    }
+    else
+    {
+        print("else")
+    }
+    exit v
+}
+i32 mut i{0}
+while i != 2
+{
+    print(i)
+    i := i + 1
+}
+i32 z{printer(2)}
+i32 w{printer(1)}
+i32 total{z + w}
+exit total

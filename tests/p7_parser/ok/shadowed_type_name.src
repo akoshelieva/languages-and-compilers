@@ -1,0 +1,14 @@
+struct Point
+{
+    i32 x
+    fn d2 := () -> i32
+    {
+        exit x
+    }
+}
+fn use := (Point Point) -> i32
+{
+    exit Point.d2()
+}
+Point Point{3}
+exit Point.d2()

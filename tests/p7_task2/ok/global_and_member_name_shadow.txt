@@ -1,0 +1,31 @@
+struct Point
+{
+    i32 x
+    fn val := () -> i32
+    {
+        exit x
+    }
+    fn get := () -> i32
+    {
+        exit val()
+    }
+    fn applyGlobal := () -> i32
+    {
+        exit globalFun(x)
+    }
+}
+fn val := () -> i32
+{
+    exit 100
+}
+fn globalFun := (i32 x) -> i32
+{
+    i32 r{x + 10}
+    exit r
+}
+Point p{5}
+i32 a{p.get()}
+i32 b{p.applyGlobal()}
+i32 c{val()}
+i32 resultValue{a + b + c}
+exit resultValue

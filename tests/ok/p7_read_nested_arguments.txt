@@ -1,0 +1,8 @@
+fn plus := (i32 a, i32 b) -> i32
+{
+    i32 r{a + b}
+    exit r
+}
+i32 v{plus(read(), plus(4, read()))}
+print(v)
+exit v

@@ -1,0 +1,7 @@
+struct P
+{
+    i32 x
+}
+P p{1}
+i32 v{p.print()}
+exit v

@@ -1,0 +1,61 @@
+Program
+  Struct Pair
+    Field left i32 mut
+    Field right i32 const
+    MemberFn merge -> i32
+      Param a i32 const
+      Param b i32 const
+      Block
+        Exit
+          Var a
+    MemberFn sum -> i32
+      Block
+        Exit
+          Var left
+  Function twice -> i32
+    Param value i32 const
+    Decl result i32 const
+      BinOp *
+        Var value
+        Const 2
+    Exit
+      Var result
+  Decl p Pair mut
+    Const 2
+    Const 3
+  Decl a i32 const
+    MemberCall merge
+      Var p
+      Call twice
+        Const 1
+      MemberCall sum
+        Var p
+  Decl b i32 const
+    Call twice
+      MemberCall merge
+        Var p
+        BinOp +
+          Const 1
+          Const 2
+        Call twice
+          Const 3
+  If
+    Bool true
+    Block
+      Decl c i32 const
+        MemberCall merge
+          Var p
+          Const 1
+          Call twice
+            Const 2
+  While
+    Bool false
+    Block
+      Decl d i32 const
+        MemberCall sum
+          Var p
+  Exit
+    MemberCall merge
+      Var p
+      Var a
+      Var b

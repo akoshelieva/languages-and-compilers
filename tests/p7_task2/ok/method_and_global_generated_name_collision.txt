@@ -1,0 +1,15 @@
+struct user
+{
+    i32 x
+    fn get := () -> i32
+    {
+        exit x
+    }
+}
+fn get := () -> i32
+{
+    exit 7
+}
+user p{3}
+i32 r{p.get() + get()}
+exit r

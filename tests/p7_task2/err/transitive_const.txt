@@ -1,0 +1,15 @@
+struct Counter
+{
+    i32 mut x
+    fn f := () -> i32
+    {
+        exit g()
+    }
+    fn g := () -> i32
+    {
+        x := x + 1
+        exit x
+    }
+}
+Counter c{0}
+exit c.f()

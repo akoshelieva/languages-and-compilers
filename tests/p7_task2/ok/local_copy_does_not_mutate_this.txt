@@ -1,0 +1,19 @@
+struct Point
+{
+    i32 mut x
+    fn shift := (i32 dx) -> i32
+    {
+        x := x + dx
+        exit x
+    }
+    fn localCopy := () -> i32
+    {
+        Point mut q{x}
+        i32 newX{q.shift(7)}
+        exit newX
+    }
+}
+Point p{5}
+i32 value{p.localCopy()}
+i32 resultValue{value + p.x}
+exit resultValue

@@ -1,0 +1,16 @@
+struct Inner
+{
+    i32 mut value
+}
+struct Outer
+{
+    Inner inner
+    fn bad := () -> i32
+    {
+        inner.value := 3
+        exit inner.value
+    }
+}
+Inner i{1}
+Outer mut o{i}
+exit o.bad()

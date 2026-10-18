@@ -1,0 +1,11 @@
+i32 v{read()}
+print(v == 0)
+if v == 0
+{
+    print("zero")
+}
+else
+{
+    print("nonzero")
+}
+exit v

@@ -1,0 +1,20 @@
+struct Pair
+{
+    i32 a
+    bool b
+}
+fn mk := (i32 n) -> Pair
+{
+    Pair p{n, false}
+    exit p
+}
+Pair p{8, true}
+print(9)
+print(3000000000)
+print(true)
+print(false)
+print("literal %d and \n stay literal")
+print(p)
+print(mk(17))
+print(mk(5).b)
+exit 12

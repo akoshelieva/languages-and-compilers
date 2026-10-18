@@ -1,0 +1,7 @@
+p and c:
+Point{x: 3, y: 4}
+Circle{center: Point{x: 3, y: 4}, radius: 2}
+7
+6000000000
+true
+Program exit with result 2

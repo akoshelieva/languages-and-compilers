@@ -1,0 +1,14 @@
+struct Counter
+{
+    i32 mut n
+    fn bump := (i32 step) -> i32
+    {
+        n := n + step
+        print(n)
+        exit n
+    }
+}
+Counter mut c{read()}
+i32 x{c.bump(read())}
+print(c)
+exit x

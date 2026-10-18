@@ -1,0 +1,9 @@
+struct Point
+{
+    i32 x
+    fn get := () -> i32
+    {
+        exit x
+    }
+}
+exit Point.get()

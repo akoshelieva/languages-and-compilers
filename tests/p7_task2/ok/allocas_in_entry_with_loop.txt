@@ -1,0 +1,15 @@
+struct Counter
+{
+    i32 mut n
+    fn go := (i32 limit) -> i32
+    {
+        while n != limit
+        {
+            i32 inc{1}
+            n := n + inc
+        }
+        exit n
+    }
+}
+Counter mut c{0}
+exit c.go(3)

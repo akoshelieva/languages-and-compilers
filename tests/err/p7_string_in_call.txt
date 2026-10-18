@@ -1,0 +1,5 @@
+fn echo := (i32 a) -> i32
+{
+    exit a
+}
+exit echo("text")

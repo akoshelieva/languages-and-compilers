@@ -1,0 +1,9 @@
+struct P
+{
+    i32 x
+    fn x := () -> i32
+    {
+        exit 1
+    }
+}
+exit 1

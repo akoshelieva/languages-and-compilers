@@ -1,0 +1,16 @@
+struct P
+{
+    i32 num
+    bool flag
+}
+struct Q
+{
+    P first
+    P second
+    i64 big
+}
+P p{1, false}
+Q q{p, {2, true}, 9000000000}
+print(q)
+print(q.second)
+exit 0

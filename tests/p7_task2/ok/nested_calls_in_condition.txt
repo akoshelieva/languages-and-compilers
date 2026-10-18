@@ -1,0 +1,27 @@
+struct Meter
+{
+    i32 mut count
+    fn inc := () -> i32
+    {
+        count := count + 1
+        exit count
+    }
+    fn isTwo := () -> bool
+    {
+        bool yes{count == 2}
+        exit yes
+    }
+    fn incAgain := () -> i32
+    {
+        i32 a{inc()}
+        exit a
+    }
+}
+Meter mut m{0}
+i32 a{m.incAgain()}
+i32 b{m.inc()}
+if m.isTwo()
+{
+    i32 c{m.inc()}
+}
+exit m.count

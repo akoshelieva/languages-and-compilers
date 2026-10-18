@@ -1,0 +1,11 @@
+struct Point
+{
+    i32 x
+    fn bad := () -> i32
+    {
+        x := 5
+        exit x
+    }
+}
+Point mut p{3}
+exit p.bad()

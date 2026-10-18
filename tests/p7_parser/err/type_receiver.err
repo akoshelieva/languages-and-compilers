@@ -1,0 +1,1 @@
+compilation error: line 9:6: cannot call a member function on type 'Point'

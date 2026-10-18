@@ -1,0 +1,5 @@
+fn f := (i32 print) -> i32
+{
+    exit 1
+}
+exit f(2)

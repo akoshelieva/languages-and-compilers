@@ -1,0 +1,38 @@
+struct Counter
+{
+    i32 mut value
+    fn relay := () -> i32
+    {
+        exit middle()
+    }
+    fn middle := () -> i32
+    {
+        exit leaf()
+    }
+    fn leaf := () -> i32
+    {
+        value := value + 1
+        exit value
+    }
+    fn even := (i32 n) -> i32
+    {
+        if n == 0
+        {
+            exit leaf()
+        }
+        exit odd(n - 1)
+    }
+    fn odd := (i32 n) -> i32
+    {
+        if n == 0
+        {
+            exit value
+        }
+        exit even(n - 1)
+    }
+}
+Counter mut c{1}
+i32 a{c.relay()}
+i32 b{c.even(2)}
+i32 result{a + b + c.value}
+exit result

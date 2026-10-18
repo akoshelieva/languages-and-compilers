@@ -14,7 +14,15 @@ TIMEOUT = 15
 
 
 def run(cmd):
-    return subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=TIMEOUT)
+    return subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                          timeout=TIMEOUT)
+
+
+def run_binary(cmd, stdin=None):
+
+
+    return subprocess.run(cmd, cwd=ROOT, capture_output=True, input=stdin,
+                          timeout=TIMEOUT)
 
 
 def compile_source(source, generate_ir):
@@ -28,18 +36,18 @@ def compile_source(source, generate_ir):
         return None, f"compilation error: {exc}"
 
 
-def execute_ir(ir_path, tmpdir, runner):
+def execute_ir(ir_path, tmpdir, runner, stdin=None):
     if runner == "lli":
-        return run(["lli", str(ir_path)])
+        return run_binary(["lli", str(ir_path)], stdin=stdin)
     executable = tmpdir / "program"
     build = run(["clang", str(ir_path), "-o", str(executable)])
     if build.returncode != 0:
         return build
-    return run([str(executable)])
+    return run_binary([str(executable)], stdin=stdin)
 
 
 def run_positive(source, runner):
-    expected = source.with_suffix(".expected").read_text(encoding="utf-8").strip()
+    expected = source.with_suffix(".expected").read_bytes()
     ir_text, error = compile_source(source, generate_ir=True)
     if error is not None:
         return "compiler rejected valid program: " + error
@@ -51,10 +59,12 @@ def run_positive(source, runner):
         tmpdir = Path(directory)
         ir_path = tmpdir / "output.ll"
         ir_path.write_text(ir_text, encoding="utf-8")
-        result = execute_ir(ir_path, tmpdir, runner)
+        input_file = source.with_suffix(".in")
+        stdin = input_file.read_bytes() if input_file.exists() else None
+        result = execute_ir(ir_path, tmpdir, runner, stdin=stdin)
         if result.returncode != 0:
-            return f"{runner} execution failed: {result.stderr.strip()}"
-        actual = result.stdout.strip()
+            return f"{runner} execution failed: {result.stderr.decode(errors='replace').strip()}"
+        actual = result.stdout
         if actual != expected:
             return f"expected {expected!r}, got {actual!r}"
     return None

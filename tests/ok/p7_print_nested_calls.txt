@@ -1,0 +1,18 @@
+struct Box
+{
+    i32 v
+    fn value := () -> i32
+    {
+        exit v
+    }
+}
+fn make := (i32 v) -> Box
+{
+    Box b{v}
+    exit b
+}
+Box b{7}
+print(make(11))
+print(b.value())
+print(make(5).v)
+exit 0
