@@ -1,0 +1,14 @@
+struct Info
+{
+    i64 x
+    i64 y
+}
+struct Wrapper
+{
+    Info i
+    i64 z
+}
+i32 n{4}
+Wrapper a{{n, n + 1}, n * 2}
+i64 sum{a.i.x + a.i.y + a.z}
+exit sum

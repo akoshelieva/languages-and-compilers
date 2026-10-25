@@ -1,0 +1,16 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point center
+    i64 mut radius
+}
+struct Holder
+{
+    Circle nested
+}
+Holder h{{1, 2}}
+exit 0

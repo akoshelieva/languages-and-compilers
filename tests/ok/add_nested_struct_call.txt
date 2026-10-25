@@ -1,0 +1,18 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point center
+    i64 mut radius
+}
+fn makePoint := (i32 a, i32 b) -> Point
+{
+    Point p{a, b}
+    exit p
+}
+Circle c{{makePoint(1, 2).x, makePoint(3, 4).y}, 5}
+i64 total{c.center.x + c.center.y + c.radius}
+exit total

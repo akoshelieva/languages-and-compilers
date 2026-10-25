@@ -1,0 +1,10 @@
+struct Flag
+{
+    bool value
+}
+struct Container
+{
+    Flag flag
+}
+Container c{{{true}}}
+exit 0

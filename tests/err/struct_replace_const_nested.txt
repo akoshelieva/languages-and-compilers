@@ -1,0 +1,12 @@
+struct Point
+{
+    i32 x
+}
+struct Box
+{
+    Point mut value
+}
+Point p{1}
+Box mut b{p}
+b := b
+exit 0

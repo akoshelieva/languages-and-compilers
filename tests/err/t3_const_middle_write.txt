@@ -1,0 +1,12 @@
+struct Point
+{
+    i32 mut x
+}
+struct Circle
+{
+    Point center
+}
+Point p{5}
+Circle mut c{p}
+c.center.x := 9
+exit c.center.x

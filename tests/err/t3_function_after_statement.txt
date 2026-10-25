@@ -1,0 +1,6 @@
+i32 value{3}
+fn f := (i32 v) -> i32
+{
+    exit v
+}
+exit value

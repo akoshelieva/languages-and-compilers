@@ -1,0 +1,7 @@
+struct Point
+{
+    i32 mut x
+}
+Point p{1}
+p.x := 9
+exit p.x

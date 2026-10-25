@@ -1,0 +1,8 @@
+struct Count
+{
+    i64 mut total
+}
+Count mut c{2}
+i32 x{10}
+c.total := x
+exit c.total

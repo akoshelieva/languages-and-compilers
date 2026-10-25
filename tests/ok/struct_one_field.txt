@@ -1,0 +1,7 @@
+struct Counter
+{
+    i32 mut value
+}
+Counter x{5}
+Counter y{x}
+exit 4

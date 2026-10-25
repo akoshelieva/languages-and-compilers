@@ -1,0 +1,18 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point center
+    i64 mut radius
+}
+fn inc := (i32 x) -> i32
+{
+    i32 result{x + 1}
+    exit result
+}
+Circle c{{inc(1), inc(2)}, inc(3)}
+i64 total{c.center.x + c.center.y + c.radius}
+exit total

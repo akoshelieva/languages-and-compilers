@@ -1,0 +1,10 @@
+fn second := (i32 n) -> i32
+{
+    i32 result{first(n) + 2}
+    exit result
+}
+fn first := (i32 n) -> i32
+{
+    exit n
+}
+exit second(second(1))

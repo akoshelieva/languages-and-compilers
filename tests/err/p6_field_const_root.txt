@@ -1,0 +1,7 @@
+struct Point
+{
+ i32 mut x
+}
+Point p{3}
+p.x := 10
+exit 0

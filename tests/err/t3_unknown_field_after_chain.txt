@@ -1,0 +1,11 @@
+struct Point
+{
+    i32 x
+}
+struct Circle
+{
+    Point center
+}
+Point p{5}
+Circle c{p}
+exit c.center.z

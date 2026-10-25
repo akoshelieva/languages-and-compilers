@@ -1,0 +1,9 @@
+fn f := () -> i32
+{
+ exit 1
+}
+struct Point
+{
+ i32 x
+}
+exit f()

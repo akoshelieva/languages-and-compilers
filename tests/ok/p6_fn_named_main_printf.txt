@@ -1,0 +1,9 @@
+fn main := () -> i32
+{
+    exit 3
+}
+fn printf := (i32 n) -> i32
+{
+    exit n
+}
+exit printf(main())

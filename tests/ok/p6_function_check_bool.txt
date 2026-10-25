@@ -1,0 +1,12 @@
+fn check := (i32 x, bool flag) -> bool
+{
+    i32 mut y{3}
+    if flag
+    {
+        y := y + x
+    }
+    bool result{y == 10}
+    exit result
+}
+bool a{check(7, true)}
+exit a

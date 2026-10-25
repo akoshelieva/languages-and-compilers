@@ -1,0 +1,1 @@
+compilation error: line 6:1: top-level exit requires i32, i64 or bool

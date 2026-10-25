@@ -1,0 +1,7 @@
+struct Flag
+{
+    bool mut enabled
+}
+Flag mut a{true}
+a.enabled := false
+exit !a.enabled

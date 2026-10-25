@@ -1,0 +1,20 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+}
+struct Circle
+{
+    Point center
+    i64 mut radius
+}
+struct Ring
+{
+    Circle outer
+    Circle inner
+}
+i32 r{5}
+Ring g{{{10, 20}, r}, {{10, 20}, 2}}
+Circle c{{1, 2}, g.outer.radius * 3}
+i64 result{c.radius + g.inner.center.y + c.center.x}
+exit result

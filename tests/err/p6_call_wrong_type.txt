@@ -1,0 +1,5 @@
+fn check := (bool x) -> bool
+{
+ exit x
+}
+exit check(42)
