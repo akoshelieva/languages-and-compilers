@@ -1,0 +1,9 @@
+struct P
+{
+    i32 x
+    fn print := () -> i32
+    {
+        exit x
+    }
+}
+exit 0

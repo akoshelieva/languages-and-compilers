@@ -1,0 +1,19 @@
+struct One
+{
+    i32 x
+    fn fromOther := (Two other) -> i32
+    {
+        exit other.get()
+    }
+}
+struct Two
+{
+    i32 value
+    fn get := () -> i32
+    {
+        exit value
+    }
+}
+One a{5}
+Two b{12}
+exit a.fromOther(b)

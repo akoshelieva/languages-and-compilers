@@ -1,0 +1,6 @@
+struct P
+{
+    i32 x
+}
+P p{1}
+exit p.fake()

@@ -1,0 +1,14 @@
+struct Point
+{
+    i32 x
+    fn get := () -> i32
+    {
+        exit x
+    }
+}
+fn make := () -> Point
+{
+    Point p{3}
+    exit p
+}
+exit make().get()

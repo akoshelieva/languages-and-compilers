@@ -1,0 +1,43 @@
+struct Point
+{
+    i32 mut x
+    i32 mut y
+    fn moved := (i32 dx) -> Point
+    {
+        Point q{x + dx, y}
+        exit q
+    }
+    fn shift := (i32 dx) -> i32
+    {
+        x := x + dx
+        exit x
+    }
+    fn d2 := () -> i32
+    {
+        i32 r{x * x + y * y}
+        exit r
+    }
+}
+struct Circle
+{
+    Point center
+    i32 radius
+    fn grown := (i32 dr) -> Circle
+    {
+        Circle g{center, radius + dr}
+        exit g
+    }
+}
+fn origin := () -> Point
+{
+    Point o{0, 0}
+    exit o
+}
+Point p{3, 4}
+Circle c{p, 2}
+i32 a{p.moved(1).shift(2)}
+i32 b{c.grown(3).radius}
+i32 d{c.grown(1).center.d2()}
+i32 e{origin().moved(7).x}
+i32 result{a + b + d + e + p.x}
+exit result

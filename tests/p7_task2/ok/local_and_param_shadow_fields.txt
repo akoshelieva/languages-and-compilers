@@ -1,0 +1,24 @@
+struct Box
+{
+    i32 mut x
+    fn local := () -> i32
+    {
+        i32 mut x{10}
+        x := x + 2
+        exit x
+    }
+    fn param := (i32 x) -> i32
+    {
+        exit x
+    }
+    fn field := () -> i32
+    {
+        exit x
+    }
+}
+Box b{3}
+i32 a{b.local()}
+i32 p{b.param(9)}
+i32 c{b.field()}
+i32 resultValue{a + p + c + b.x}
+exit resultValue

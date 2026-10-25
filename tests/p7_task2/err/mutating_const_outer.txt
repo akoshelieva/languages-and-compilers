@@ -1,0 +1,16 @@
+struct Point
+{
+    i32 mut x
+    fn inc := () -> i32
+    {
+        x := x + 1
+        exit x
+    }
+}
+struct Outer
+{
+    Point mut inside
+}
+Point p{4}
+Outer o{p}
+exit o.inside.inc()

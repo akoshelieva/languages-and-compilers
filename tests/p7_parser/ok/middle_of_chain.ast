@@ -1,0 +1,15 @@
+Program
+  Struct Point
+    Field x i32 const
+    MemberFn get -> Point
+      Block
+        Decl p Point const
+          Var x
+        Exit
+          Var p
+  Decl p Point const
+    Const 1
+  Exit
+    Field .x
+      MemberCall get
+        Var p

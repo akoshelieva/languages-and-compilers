@@ -1,0 +1,30 @@
+struct Pair
+{
+    i32 mut left
+    i32 right
+    fn merge := (i32 a, i32 b) -> i32
+    {
+        exit a
+    }
+    fn sum := () -> i32
+    {
+        exit left
+    }
+}
+fn twice := (i32 value) -> i32
+{
+    i32 result{value * 2}
+    exit result
+}
+Pair mut p{2, 3}
+i32 a{p.merge(twice(1), p.sum())}
+i32 b{twice(p.merge(1 + 2, twice(3)))}
+if true
+{
+    i32 c{p.merge(1, twice(2))}
+}
+while false
+{
+    i32 d{p.sum()}
+}
+exit p.merge(a, b)

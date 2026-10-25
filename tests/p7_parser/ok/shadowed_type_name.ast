@@ -1,0 +1,17 @@
+Program
+  Struct Point
+    Field x i32 const
+    MemberFn d2 -> i32
+      Block
+        Exit
+          Var x
+  Function use -> i32
+    Param Point Point const
+    Exit
+      MemberCall d2
+        Var Point
+  Decl Point Point const
+    Const 3
+  Exit
+    MemberCall d2
+      Var Point

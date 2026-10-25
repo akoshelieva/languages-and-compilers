@@ -1,0 +1,20 @@
+struct One
+{
+    i32 x
+    fn make := (i32 z) -> Two
+    {
+        Two b{z}
+        exit b
+    }
+}
+struct Two
+{
+    i32 value
+    fn get := () -> i32
+    {
+        exit value
+    }
+}
+One o{1}
+Two b{o.make(12)}
+exit b.get()

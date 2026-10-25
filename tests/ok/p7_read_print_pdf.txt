@@ -1,0 +1,20 @@
+struct Point
+{
+    i32 x
+    i32 y
+}
+struct Circle
+{
+    Point center
+    i32 radius
+}
+Point p{read(), read()}
+Circle c{p, 2}
+i64 big{3000000000}
+print("p and c:")
+print(p)
+print(c)
+print(p.x + p.y)
+print(big * 2)
+print(p.x == 3)
+exit c.radius

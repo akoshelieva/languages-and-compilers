@@ -1,0 +1,13 @@
+Program
+  Struct Point
+    Field x i32 const
+    Field y i32 const
+  Function make -> Point
+    Decl p Point const
+      Const 3
+      Const 4
+    Exit
+      Var p
+  Exit
+    Field .x
+      Call make

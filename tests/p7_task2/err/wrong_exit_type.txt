@@ -1,0 +1,10 @@
+struct P
+{
+    i32 x
+    fn bad := () -> bool
+    {
+        exit x
+    }
+}
+P p{1}
+exit p.bad()

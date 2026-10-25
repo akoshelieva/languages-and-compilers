@@ -1,0 +1,9 @@
+9
+3000000000
+true
+false
+literal %d and \n stay literal
+Pair{a: 8, b: true}
+Pair{a: 17, b: false}
+false
+Program exit with result 12

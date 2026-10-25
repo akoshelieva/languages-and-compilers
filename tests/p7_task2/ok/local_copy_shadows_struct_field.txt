@@ -1,0 +1,23 @@
+struct Point
+{
+    i32 mut x
+    fn shift := (i32 d) -> i32
+    {
+        x := x + d
+        exit x
+    }
+}
+struct Holder
+{
+    Point mut p
+    fn onCopy := () -> i32
+    {
+        Point mut p{p}
+        i32 result{p.shift(3)}
+        exit result
+    }
+}
+Point p{5}
+Holder h{p}
+i32 result{h.onCopy() + h.p.x}
+exit result

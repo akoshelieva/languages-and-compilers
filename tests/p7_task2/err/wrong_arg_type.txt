@@ -1,0 +1,10 @@
+struct P
+{
+    i32 x
+    fn m := (i32 dx) -> i32
+    {
+        exit dx
+    }
+}
+P p{1}
+exit p.m(true)

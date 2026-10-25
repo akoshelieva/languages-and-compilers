@@ -1,0 +1,5 @@
+struct P
+{
+    i32 read
+}
+exit 0

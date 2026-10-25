@@ -1,0 +1,20 @@
+struct Point
+{
+    i32 mut x
+    fn inc := () -> i32
+    {
+        x := x + 1
+        exit x
+    }
+}
+struct Box
+{
+    Point p
+    fn relay := () -> i32
+    {
+        exit p.inc()
+    }
+}
+Point p{3}
+Box mut box{p}
+exit box.relay()

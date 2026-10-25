@@ -1,0 +1,17 @@
+struct Calc
+{
+    i32 base
+    fn sum := (i32 a, i64 b) -> i64
+    {
+        i64 r{base + a + b}
+        exit r
+    }
+    fn one := () -> i32
+    {
+        exit base
+    }
+}
+Calc c{2}
+i64 big{4000000000}
+i64 total{c.sum(c.one(), big)}
+exit total

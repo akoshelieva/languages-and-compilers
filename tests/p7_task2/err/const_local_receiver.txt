@@ -1,0 +1,16 @@
+struct P
+{
+    i32 mut x
+    fn inc := () -> i32
+    {
+        x := x + 1
+        exit x
+    }
+    fn bad := () -> i32
+    {
+        P q{x}
+        exit q.inc()
+    }
+}
+P mut p{0}
+exit p.bad()
