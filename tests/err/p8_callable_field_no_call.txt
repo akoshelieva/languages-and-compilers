@@ -1,0 +1,10 @@
+struct Point
+{
+    i32 x
+}
+struct Holder
+{
+    Point point
+}
+Holder h{{7}}
+exit h.point(1)

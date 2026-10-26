@@ -1,0 +1,13 @@
+Program
+  Function broken -> i32
+    Param x i32 const
+    Exit
+      Var x
+  Decl n i32 const
+    Const 1
+  Lambda later -> i32
+    Block
+      Exit
+        Const 0
+  Exit
+    Const 0

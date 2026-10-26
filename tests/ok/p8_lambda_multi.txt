@@ -1,0 +1,9 @@
+i32 a{2}
+i64 b{3}
+bool c{true}
+fn compute := [a, b, c](i32 extra) -> i64
+{
+    i64 s{a + b + extra}
+    exit s
+}
+exit compute(4)

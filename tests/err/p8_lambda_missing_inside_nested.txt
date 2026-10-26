@@ -1,0 +1,10 @@
+i32 n{1}
+fn outer := [n]() -> i32
+{
+    fn inner := []() -> i32
+    {
+        exit n
+    }
+    exit inner()
+}
+exit outer()

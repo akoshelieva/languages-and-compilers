@@ -1,0 +1,6 @@
+fn f := []() -> i32
+{
+    exit 4
+}
+i32 n{f}
+exit n

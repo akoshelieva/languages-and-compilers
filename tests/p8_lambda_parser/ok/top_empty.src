@@ -1,0 +1,11 @@
+fn square := (i32 x) -> i32
+{
+    i32 r{x * x}
+    exit r
+}
+fn no_captures := [](i32 x) -> i32
+{
+    exit square(x)
+}
+print(no_captures(3))
+exit 0

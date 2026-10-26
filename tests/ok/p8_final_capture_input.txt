@@ -1,0 +1,8 @@
+i32 n{read()}
+fn multiply := [n](i32 x) -> i32
+{
+    i32 result{n * x}
+    exit result
+}
+print(multiply(3))
+exit n

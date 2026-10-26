@@ -1,0 +1,12 @@
+i32 mut v{0}
+i32 mut total{0}
+while v != 4
+{
+    fn current := [v]() -> i32
+    {
+        exit v
+    }
+    total := total + current()
+    v := v + 1
+}
+exit total

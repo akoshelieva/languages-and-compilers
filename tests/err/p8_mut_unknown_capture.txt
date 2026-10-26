@@ -1,0 +1,5 @@
+fn broken := [mut missing]() -> i32
+{
+    exit missing
+}
+exit 0

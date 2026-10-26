@@ -1,0 +1,9 @@
+i32 seed{4}
+fn f := [seed]() -> i32
+{
+    i32 mut n{seed}
+    n := n + 1
+    exit n
+}
+print(f())
+exit f()

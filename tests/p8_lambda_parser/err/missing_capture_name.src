@@ -1,0 +1,5 @@
+fn broken := [mut]() -> i32
+{
+    exit 0
+}
+exit 0

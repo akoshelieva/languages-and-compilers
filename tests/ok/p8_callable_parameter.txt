@@ -1,0 +1,16 @@
+struct Scale
+{
+    i32 factor
+    fn call := (i32 n) -> i32
+    {
+        i32 result{factor * n}
+        exit result
+    }
+}
+fn apply := (Scale s, i32 value) -> i32
+{
+    exit s(value)
+}
+Scale x{4}
+print(apply(x, 7))
+exit x.call(2)

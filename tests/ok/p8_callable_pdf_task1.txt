@@ -1,0 +1,40 @@
+struct Scale
+{
+    i32 k
+    fn call := (i32 v) -> i32
+    {
+        i32 r{v * k}
+        exit r
+    }
+}
+struct Counter
+{
+    i32 mut n
+    fn call := () -> i32
+    {
+        n := n + 1
+        exit n
+    }
+}
+struct Shape
+{
+    Scale scale
+    i32 side
+    fn grown := () -> i32
+    {
+        i32 g{scale(side)}
+        exit g
+    }
+}
+Scale triple{3}
+Counter mut c{0}
+Shape s{{2}, 5}
+print(triple(14))
+print(triple.call(14))
+print(s.scale(7))
+print(s.grown())
+i32 a{c()}
+i32 b{c()}
+print(c)
+i32 r{a * 10 + b}
+exit r

@@ -1,0 +1,32 @@
+Program
+  Decl n i32 mut
+    Const 0
+  If
+    Bool true
+    Block
+      Lambda inside_if -> i32
+        Block
+          Exit
+            Const 3
+      Print
+        Call inside_if
+    Block
+      Lambda inside_else -> i32
+        Capture n const
+        Block
+          Exit
+            Var n
+  While
+    Bool false
+    Block
+      Lambda inside_while -> i32
+        Capture n mut
+        Block
+          Exit
+            Var n
+      Assign n
+        BinOp +
+          Var n
+          Const 1
+  Exit
+    Var n

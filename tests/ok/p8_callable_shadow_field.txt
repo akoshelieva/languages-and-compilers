@@ -1,0 +1,20 @@
+struct Scale
+{
+    i32 factor
+    fn call := (i32 n) -> i32
+    {
+        i32 result{factor * n}
+        exit result
+    }
+}
+struct Holder
+{
+    Scale inner
+    fn number := () -> i32
+    {
+        Scale inner{10}
+        exit inner(2)
+    }
+}
+Holder h{{4}}
+exit h.number()

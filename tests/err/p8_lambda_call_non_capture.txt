@@ -1,0 +1,7 @@
+i32 mut n{2}
+fn f := []() -> i32
+{
+    n := 3
+    exit 0
+}
+exit f()

@@ -1,0 +1,1 @@
+compilation error: line 6:8: cannot access capture 'k' outside its lambda

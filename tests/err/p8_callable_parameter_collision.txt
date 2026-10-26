@@ -1,0 +1,18 @@
+struct Scale
+{
+    i32 k
+    fn call := (i32 n) -> i32
+    {
+        i32 result{k * n}
+        exit result
+    }
+}
+fn action := (i32 n) -> i32
+{
+    exit n
+}
+fn apply := (Scale action) -> i32
+{
+    exit action(2)
+}
+exit 0

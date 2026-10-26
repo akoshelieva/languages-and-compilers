@@ -1,0 +1,8 @@
+while false
+{
+    fn inner := () -> i32
+    {
+        exit 0
+    }
+}
+exit 0

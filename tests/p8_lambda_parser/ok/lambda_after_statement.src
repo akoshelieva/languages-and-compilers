@@ -1,0 +1,7 @@
+i32 first{1}
+print(first)
+fn second := []() -> i32
+{
+    exit 2
+}
+exit second()

@@ -1,0 +1,19 @@
+struct Scale
+{
+    i32 k
+    fn call := (i32 v) -> i32
+    {
+        i32 r{v * k}
+        exit r
+    }
+}
+Scale call{7}
+fn outer := [call](i32 n) -> i32
+{
+    fn inner := [call](i32 v) -> i32
+    {
+        exit call(v)
+    }
+    exit inner(n)
+}
+exit outer(6)

@@ -1,0 +1,21 @@
+i32 n{0}
+fn next := [mut n]() -> i32
+{
+    n := n + 1
+    exit n
+}
+fn frozen := [next]() -> i32
+{
+    fn fresh := [mut next]() -> i32
+    {
+        exit next()
+    }
+    i32 x{fresh()}
+    i32 y{fresh()}
+    i32 z{x + y}
+    exit z
+}
+print(frozen())
+print(frozen())
+print(next())
+exit n

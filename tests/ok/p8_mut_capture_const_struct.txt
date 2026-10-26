@@ -1,0 +1,18 @@
+struct Counter
+{
+    i32 mut n
+    fn call := () -> i32
+    {
+        n := n + 1
+        exit n
+    }
+}
+Counter c{10}
+fn run := [mut c]() -> i32
+{
+    exit c()
+}
+print(run())
+print(run())
+print(c)
+exit 0

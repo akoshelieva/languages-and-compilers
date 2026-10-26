@@ -1,0 +1,10 @@
+fn outer := () -> i32
+{
+    fn f := [top]() -> i32
+    {
+        exit top
+    }
+    exit f()
+}
+i32 top{10}
+exit outer()

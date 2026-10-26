@@ -1,0 +1,1 @@
+compilation error: line 8:18: 'field' is not captured by lambda 'f': add it to the capture list, [field]

@@ -1,0 +1,22 @@
+struct Scale
+{
+    i32 factor
+    fn call := (i32 n) -> i32
+    {
+        i32 result{factor * n}
+        exit result
+    }
+}
+struct Container
+{
+    Scale nested
+    i32 unused
+    fn calc := () -> i32
+    {
+        exit nested(9)
+    }
+}
+Container holder{{5}, 1}
+print(holder.nested(3))
+print(holder.nested.call(4))
+exit holder.calc()
