@@ -1,0 +1,15 @@
+struct S
+{
+    i32 value
+    fn compute := (i32 n) -> i32
+    {
+        fn add := [value, n](i32 extra) -> i32
+        {
+            i32 result{value + extra}
+            exit result
+        }
+        exit add(n)
+    }
+}
+S s{2}
+exit s.compute(3)

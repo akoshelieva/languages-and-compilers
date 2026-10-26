@@ -1,0 +1,17 @@
+i32 base{10}
+fn left := [mut base]() -> i32
+{
+    base := base + 1
+    exit base
+}
+fn right := [mut base]() -> i32
+{
+    base := base + 10
+    exit base
+}
+print(left())
+print(left())
+print(right())
+print(right())
+print(left())
+exit base

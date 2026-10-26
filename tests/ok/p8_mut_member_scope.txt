@@ -1,0 +1,20 @@
+struct Box
+{
+    i32 value
+    fn run := () -> i32
+    {
+        fn inc := [mut value]() -> i32
+        {
+            value := value + 1
+            exit value
+        }
+        i32 a{inc()}
+        i32 b{inc()}
+        i32 total{a + b}
+        exit total
+    }
+}
+Box b{8}
+print(b.run())
+print(b)
+exit 0

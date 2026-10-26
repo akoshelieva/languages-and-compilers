@@ -1,0 +1,15 @@
+struct Box
+{
+    i32 v
+    fn twice := (i32 n) -> i32
+    {
+        exit n
+    }
+    fn test := () -> i32
+    {
+        i32 twice{3}
+        exit twice(4)
+    }
+}
+Box b{1}
+exit b.test()

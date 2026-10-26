@@ -1,0 +1,9 @@
+struct S
+{
+    i32 n
+    fn f := [n]() -> i32
+    {
+        exit n
+    }
+}
+exit 0

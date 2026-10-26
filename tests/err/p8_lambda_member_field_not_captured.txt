@@ -1,0 +1,14 @@
+struct Box
+{
+    i32 x
+    fn eval := () -> i32
+    {
+        fn f := []() -> i32
+        {
+            exit x
+        }
+        exit f()
+    }
+}
+Box box{3}
+exit box.eval()

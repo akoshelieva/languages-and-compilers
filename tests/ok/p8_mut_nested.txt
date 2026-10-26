@@ -1,0 +1,21 @@
+i32 seed{0}
+fn next := [mut seed]() -> i32
+{
+    seed := seed + 1
+    exit seed
+}
+fn outer := [mut next]() -> i32
+{
+    fn inner := [mut next]() -> i32
+    {
+        exit next()
+    }
+    i32 a{inner()}
+    i32 b{inner()}
+    i32 c{next()}
+    i32 result{a + b + c}
+    exit result
+}
+print(outer())
+print(next())
+exit seed

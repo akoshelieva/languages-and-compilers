@@ -1,0 +1,9 @@
+i32 mut n{2}
+i32 m{3}
+i32 mut k{4}
+fn mix := [mut n, m, mut k](i32 a, i64 b) -> i64
+{
+    i64 r{b + a}
+    exit r
+}
+exit 0

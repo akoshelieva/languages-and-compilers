@@ -1,0 +1,11 @@
+i32 seed{0}
+fn next := [mut seed]() -> i32
+{
+    seed := seed + 1
+    exit seed
+}
+fn frozen := [next]() -> i32
+{
+    exit next()
+}
+exit frozen()

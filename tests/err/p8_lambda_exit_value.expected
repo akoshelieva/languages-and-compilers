@@ -1,0 +1,1 @@
+compilation error: line 5:6: 'f' is a lambda and cannot be returned by exit: its type has no name
