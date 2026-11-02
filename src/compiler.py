@@ -620,6 +620,19 @@ class NotNode(ASTNode):
         return [self.operand]
 
 
+class ExprStmtNode(ASTNode):
+    """Internal statement retaining effects of a removed initializer or store."""
+
+    def __init__(self, expression):
+        self.expression = expression
+
+    def label(self):
+        return "ExprStmt"
+
+    def children(self):
+        return [self.expression]
+
+
 class Parser:
     def __init__(self, lines):
         self.lines = [
@@ -1930,6 +1943,120 @@ class SemanticChecker:
         )
 
 
+class _UnusedReadCounter:
+    """Count actual reads of resolved declarations, never assignment targets."""
+
+    def __init__(self):
+        self.declarations = set()
+        self.reads = {}
+
+    def visit_children(self, node):
+        for child in node.children():
+            child.accept(self)
+
+    def __getattr__(self, name):
+        if name.startswith("visit_"):
+            return self.visit_children
+        raise AttributeError(name)
+
+    def visit_decl(self, node):
+        self.declarations.add(node)
+        self.visit_children(node)
+
+    def visit_var(self, node):
+        if isinstance(node.decl, DeclNode):
+            self.reads[node.decl] = self.reads.get(node.decl, 0) + 1
+
+    def visit_assign(self, node):
+        # A whole-variable or field store is not a read of its destination.
+        node.value.accept(self)
+
+
+class RemoveUnusedVariables:
+    """Prune unread local declarations and their stores, to a fixed point.
+
+    Run only on a tree already checked by SemanticChecker: VarNode.decl and
+    AssignNode.decl identify the binding, including shadows and captures.
+    """
+
+    @staticmethod
+    def _target_decl(node):
+        if node.target is None:
+            return node.decl
+        target = node.target
+        while isinstance(target, FieldAccessNode):
+            target = target.base
+        return target.decl if isinstance(target, VarNode) else None
+
+    @classmethod
+    def _effects(cls, expr):
+        # Keep the whole call: its receiver and arguments can affect its result
+        # or the outside world. Pure enclosing expressions can be discarded.
+        if isinstance(expr, (CallNode, MemberCallNode)):
+            return [ExprStmtNode(expr)]
+        result = []
+        for child in expr.children():
+            result.extend(cls._effects(child))
+        return result
+
+    def _statements(self, statements):
+        result = []
+        for statement in statements:
+            if isinstance(statement, DeclNode) and statement in self.unused:
+                for init in statement.initializers:
+                    result.extend(self._effects(init))
+            elif (isinstance(statement, LambdaNode)
+                  and statement.synthetic_decl in self.unused):
+                # Lambda captures are copies of already evaluated values.
+                continue
+            elif (isinstance(statement, AssignNode)
+                  and self._target_decl(statement) in self.unused):
+                result.extend(self._effects(statement.value))
+            else:
+                if isinstance(statement, (IfNode, WhileNode, LambdaNode)):
+                    statement.accept(self)
+                result.append(statement)
+        return result
+
+    def visit_program(self, node):
+        while True:
+            counter = _UnusedReadCounter()
+            node.accept(counter)
+            self.unused = {decl for decl in counter.declarations
+                           if counter.reads.get(decl, 0) == 0}
+            if not self.unused:
+                return
+            for struct in node.structs:
+                for method in struct.methods:
+                    method.accept(self)
+            for function in node.functions:
+                function.accept(self)
+            node.statements = self._statements(node.statements)
+
+    def visit_function(self, node):
+        node.body = self._statements(node.body)
+
+    def visit_memberfn(self, node):
+        self.visit_function(node)
+
+    def visit_lambda(self, node):
+        node.synthetic_struct.methods[0].accept(self)
+
+    def visit_block(self, node):
+        node.statements = self._statements(node.statements)
+
+    def visit_if(self, node):
+        node.body.accept(self)
+        if node.else_block is not None:
+            node.else_block.accept(self)
+
+    def visit_while(self, node):
+        node.body.accept(self)
+
+    def __init__(self):
+        self.unused = set()
+
+
 class CodeGen:
     def __init__(self):
         self.I1 = ir.IntType(1)
@@ -2210,6 +2337,9 @@ class CodeGen:
     def visit_structdecl(self, node):
         self.struct_types[node.name].set_body(
             *(self.llvm_type(field.type_name) for field in node.fields))
+
+    def visit_exprstmt(self, node):
+        node.expression.accept(self)
 
     def visit_decl(self, node):
         node.ir_ptr = self.entry_alloca(node.type_name, node.name)
@@ -2508,13 +2638,18 @@ def dump_tokens(lines):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    remove_unused = "--remove-unused" in argv
+    if remove_unused:
+        argv.remove("--remove-unused")
     if len(argv) == 2 and argv[0] in ("--tokens", "--ast", "--ast-checked"):
         mode, input_path, output_path = argv[0], argv[1], None
     elif len(argv) == 2 and not argv[0].startswith("--"):
         mode, input_path, output_path = "compile", argv[0], argv[1]
     else:
-        print("usage: python3 compiler.py [--ast|--ast-checked|--tokens] input.txt OR "
-              "python3 compiler.py input.txt output.ll", file=sys.stderr)
+        print("usage: python3 compiler.py [--remove-unused] "
+              "[--ast|--ast-checked|--tokens] input.txt OR "
+              "python3 compiler.py [--remove-unused] input.txt output.ll",
+              file=sys.stderr)
         return 1
     if output_path is not None and os.path.abspath(input_path) == os.path.abspath(output_path):
         print("compilation error: input and output paths must be different", file=sys.stderr)
@@ -2535,6 +2670,8 @@ def main(argv=None):
             tree.dump()
             return 0
         tree.accept(SemanticChecker())
+        if remove_unused:
+            tree.accept(RemoveUnusedVariables())
         if mode == "--ast-checked":
             tree.dump()
             return 0

@@ -179,3 +179,22 @@ PDF demonstration programs are `tests/ok/p8_callable_pdf_task1.txt`,
 matching `.expected` outputs. For input-consuming tests, a same-stem `.in`
 file supplies standard input.
 
+
+## Practice 9 — Task 1: remove unused variables
+
+`--remove-unused` optionally runs `RemoveUnusedVariables` as an AST visitor
+**after** semantic checking and **before** LLVM generation. It removes unread
+local declarations (including unused lambdas) and assignments to them, using
+resolved declaration identities for shadowing, lexical scopes and captures.
+Reads are recounted until a fixed point. `read()` and function/member calls
+from removed initializers and assignments are retained as internal expression
+statements, preserving their possible side effects and evaluation order.
+
+```bash
+python compiler.py --remove-unused tests/ok/p8_mut_pdf.txt output.ll
+python compiler.py --remove-unused --ast-checked tests/ok/p8_mut_pdf.txt
+python tests/check_p9_remove_unused.py
+```
+
+Plain `--ast` remains the original parser AST; without `--remove-unused` the
+existing checked AST, LLVM generation and CLI behavior are unchanged.
