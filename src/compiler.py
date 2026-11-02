@@ -1638,7 +1638,15 @@ class SemanticChecker:
             while isinstance(cursor, FieldAccessNode):
                 links.append(cursor)
                 cursor = cursor.base
-            if not isinstance(cursor, VarNode) or not cursor.decl.mutable:
+            if isinstance(cursor, VarNode) and not cursor.decl.mutable:
+                if (self.current_struct is not None
+                        and getattr(self.current_struct, "lambda_type", False)
+                        and isinstance(cursor.decl, FieldDeclNode)):
+                    self.fail(node, f"cannot assign to field '{links[0].name}' of "
+                                    f"capture '{cursor.name}': the capture is const; "
+                                    f"use '[mut {cursor.name}]' to modify it")
+                self.fail(node, f"cannot assign to '{node.name}': it is not mut")
+            if not isinstance(cursor, VarNode):
                 self.fail(node, f"cannot assign to '{node.name}': it is not mut")
             for link in reversed(links):
                 if not link.field.mutable:
@@ -1652,6 +1660,10 @@ class SemanticChecker:
         else:
             node.decl = self.lookup(node, node.name)
             node.type_name = node.decl.type_name
+            if self.is_lambda_type(node.type_name):
+                self.fail(node, f"cannot assign to lambda '{node.name}': "
+                                "lambda values cannot be reassigned, "
+                                "even with mutable captures")
             if not node.decl.mutable:
                 if self.current_struct is not None and getattr(self.current_struct, "lambda_type", False) \
                         and isinstance(node.decl, FieldDeclNode):

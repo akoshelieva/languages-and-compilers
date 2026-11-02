@@ -1,0 +1,12 @@
+i32 seed{0}
+fn f := [mut seed]() -> i32
+{
+    seed := seed + 1
+    exit seed
+}
+fn g := []() -> i32
+{
+    exit 2
+}
+f := g
+exit 0

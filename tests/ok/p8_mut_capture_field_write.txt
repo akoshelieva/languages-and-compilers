@@ -1,0 +1,13 @@
+struct Pair
+{
+    i32 mut x
+}
+Pair p{1}
+fn f := [mut p]() -> i32
+{
+    p.x := 5
+    exit p.x
+}
+print(f())
+print(p.x)
+exit 0

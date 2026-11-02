@@ -1,45 +1,54 @@
-Practice 9 — AST Optimizations
+Practice 9 — AI Usage
 
 AI tool used:
 - OpenAI ChatGPT (GPT-6).
 
-User requests (summarised):
-- Implement Practice 9 Tasks 1–3 and the Additional Task.
-- Preserve existing compiler functionality and regression tests.
-- Use AST visitors after SemanticChecker without major refactoring.
-- Support --remove-unused and --ast-checked.
-- Preserve side effects and correct program behavior.
-- Add optimization tests, update documentation and verify LLVM IR.
+AI Chat
+https://chatgpt.com/share/6ae8f3ae-7c6c-83eb-83ec-4edc75e7c138
 
-AI-assisted implementation:
-- Implemented removal of unused variables and assignments.
-- Added declaration-based read counting, shadowing and scope handling.
-- Supported lambda captures and repeated analysis until a fixpoint.
-- Implemented removal of unreachable global functions.
-- Handled recursion, mutual recursion and transitive function calls.
-- Added conservative side-effect analysis for unused pure calls.
-- Preserved print, read(), mutating calls, loops and recursive calls.
-- Supported callable objects, lambda.call and mutable captures.
-- Reused existing AST visitors, SemanticChecker and LLVM CodeGen.
-- Added optimization fixtures, regression tests and documentation.
+Prompts and requests (summarized):
+- Implement Practice 9 on top of the existing compiler without breaking previous functionality.
+- Add the --remove-unused flag and optimize the AST after semantic checking.
+- Remove unused variables by counting reads per declaration, supporting shadowing, nested scopes and repeated optimization until nothing changes.
+- Remove unused global functions and functions that become unused after other removals.
+- Implement the Additional Task: eliminate unused pure calls while preserving input/output, mutations, loops and potentially non-terminating recursion.
+- Add optimization tests, verify LLVM IR and update README.
+- Compare the implementation against the official Practice 9 PDF and correct any differences.
 
-Testing and validation:
-- check.py: 359 passed, 0 failed.
-- run_tests.py: 563 passed, 0 failed.
-- All 18 tests/check_*.py scripts passed.
-- tests/opt contains 23 complete optimization test sets.
-- tests/ok and tests/err passed with and without optimization.
-- Optimized AST snapshots and LLVM IR were verified.
-- Runtime execution was tested using clang.
-- Removed AST subtrees were checked using weakref and gc.collect().
-- Existing compiler functionality and old tests were preserved.
+What I used from AI suggestions:
+- The AST optimization visitor and analyses for variable reads, function calls and side effects.
+- The iterative fixpoint approach for removing unused declarations and functions.
+- Test programs, expected AST snapshots, verification scripts and documentation drafts.
+- The existing compiler architecture was reused, with LLVM IR generated through llvmlite.ir instead of assembling IR as text.
+
+What was changed or refined:
+- The initial AI-assisted implementation was reviewed after the official Practice 9 PDF became available.
+- Optimization behavior and tests were aligned with the exact two warm-up programs, the three-function example and the Additional Task examples.
+- PDF-specific regression checks were added and optimized AST expectations were corrected.
+- Existing compiler functionality and earlier tests were preserved.
+- Documentation and validation results were updated for the PDF-aligned version.
+
+My understanding of the implementation:
+The optimizer checks variables by their declarations. It is important when we have two variables named x
+in different code blocks, because only the unused one should be removed. The code also removes assignments to 
+unused variables.The optimization runs several times because removing one variable can make another unused.
+In additional task solution, the code checks whether a function has side effects. For example, a call that only 
+calculates a value can be removed,but calls that print, read input or change an object should stay.
+
+
+Validation of the PDF-aligned version:
+- check.py: 368 passed, 0 failed.
+- run_tests.py: 576 passed, 0 failed.
+- All 19 tests/check_*.py scripts passed.
+- 28 complete optimization test sets in tests/opt.
+- Tests cover optimized and unoptimized execution, AST output, LLVM IR and runtime behavior.
 
 Known limitations:
-- Self-feeding variables are not fully optimized.
-- Recursion and while loops are handled conservatively.
-- Native lli was unavailable; clang was used instead.
-- The original Practice 9 PDF was unavailable during implementation.
-  Representative warm-up examples were tested, but exact correspondence
-  with all PDF examples could not be independently verified.
+- Self-feeding variables may remain because a syntactic read still counts as a use.
+- Recursion, while loops and uncertain calls are treated conservatively.
+- The verification environment used clang because native lli was unavailable.
 
-AI link: https://chatgpt.com/share/6ae87d19-1d64-83eb-9d97-8f6c306c55eb
+AI involvement:
+- ChatGPT assisted with code implementation, debugging, tests, PDF alignment and documentation.
+- The implementation was developed with AI assistance rather than entirely independently.
+ 

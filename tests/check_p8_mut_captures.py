@@ -83,6 +83,7 @@ def verify():
         "p8_mut_const_mixed_field", "p8_mut_const_struct_copy",
         "p8_mut_nested_const_copy", "p8_mut_transitive_const_copy",
         "p8_mut_duplicate_capture", "p8_mut_unknown_capture",
+        "p8_capture_const_field_write",
     )
     from src.compiler import CompileError
     for name in negatives:
