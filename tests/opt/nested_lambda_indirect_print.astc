@@ -1,0 +1,20 @@
+Program
+  Function outer -> i32
+    Lambda printer -> i32
+      Struct lambda.printer
+        MemberFn call -> i32
+          Block
+            Print
+              Const 9
+            Exit
+              Const 1
+      Decl printer lambda.printer const
+    ExprStmt
+      CallableCall printer
+        Var printer
+    Exit
+      Const 2
+  ExprStmt
+    Call outer
+  Exit
+    Const 4

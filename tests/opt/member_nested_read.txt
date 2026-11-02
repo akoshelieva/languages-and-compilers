@@ -1,0 +1,12 @@
+struct Twice
+{
+    i32 n
+    fn call := (i32 x) -> i32
+    {
+        i32 result{n * x}
+        exit result
+    }
+}
+Twice t{2}
+i32 ignored{t(read()) + t.call(read())}
+exit read()

@@ -1,0 +1,24 @@
+Program
+  Decl base i32 const
+    Const 1
+  Lambda bump -> i32
+    Struct lambda.bump
+      Field base i32 mut
+      MemberFn call -> i32
+        Block
+          Assign base
+            BinOp +
+              Var base
+              Const 1
+          Exit
+            Var base
+    Decl bump lambda.bump mut
+      Var base
+  ExprStmt
+    CallableCall bump
+      Var bump
+  ExprStmt
+    CallableCall bump
+      Var bump
+  Exit
+    Const 4

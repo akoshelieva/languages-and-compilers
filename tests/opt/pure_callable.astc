@@ -1,0 +1,14 @@
+Program
+  Struct Adder
+    Field amount i32 const
+    MemberFn call -> i32
+      Param n i32 const
+      Block
+        Decl result i32 const
+          BinOp +
+            Var n
+            Var amount
+        Exit
+          Var result
+  Exit
+    Const 4

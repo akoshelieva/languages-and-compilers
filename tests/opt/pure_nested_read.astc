@@ -1,0 +1,7 @@
+Program
+  ExprStmt
+    Call read
+  ExprStmt
+    Call read
+  Exit
+    Call read

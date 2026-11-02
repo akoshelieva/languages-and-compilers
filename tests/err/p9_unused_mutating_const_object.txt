@@ -1,0 +1,12 @@
+struct Counter
+{
+    i32 mut n
+    fn bump := () -> i32
+    {
+        n := n + 1
+        exit n
+    }
+}
+Counter c{1}
+i32 ignored{c.bump()}
+exit 4

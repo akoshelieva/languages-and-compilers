@@ -2036,6 +2036,81 @@ class _LiveLambdaStructs:
         self.visit_children(node)
 
 
+class _CallEffects:
+    """Conservative, transitive effect summary for resolved function/method calls.
+
+    No LLVM inspection is needed: SemanticChecker already resolves call targets
+    and marks mutating member functions (including mutable lambda captures).
+    Cycles are treated as observable because removing them could change
+    termination, even if their bodies contain no I/O or mutations.
+    """
+
+    def __init__(self, program):
+        structs = program.structs + program.generated_structs
+        self.callables = set(program.functions)
+        for struct in structs:
+            self.callables.update(struct.methods)
+        self.edges = {fn: set() for fn in self.callables}
+        self.effectful = set()
+        for function in self.callables:
+            body_effect = self._scan_body(function.body, function)
+            if function.mutating or body_effect:
+                self.effectful.add(function)
+
+        # A recursive cycle may diverge. Treat every participant as effectful.
+        for function in self.callables:
+            pending = list(self.edges[function])
+            seen = set()
+            while pending:
+                callee = pending.pop()
+                if callee is function:
+                    self.effectful.add(function)
+                    break
+                if callee not in seen:
+                    seen.add(callee)
+                    pending.extend(self.edges[callee])
+
+        changed = True
+        while changed:
+            before = len(self.effectful)
+            self.effectful.update(
+                fn for fn, callees in self.edges.items()
+                if any(callee in self.effectful for callee in callees)
+            )
+            changed = len(self.effectful) != before
+
+    def _scan_body(self, body, caller):
+        effect = False
+        for statement in body:
+            if self._scan(statement, caller):
+                effect = True
+        return effect
+
+    def _scan(self, node, caller):
+        if isinstance(node, LambdaNode):
+            # Constructing a closure only copies its captures. The callable
+            # body is analysed independently as a generated member method.
+            return False
+        direct = isinstance(node, (PrintNode, WhileNode))
+        if isinstance(node, (CallNode, MemberCallNode)):
+            if isinstance(node, CallNode) and node.name == "read":
+                direct = True
+            elif node.function in self.callables:
+                self.edges[caller].add(node.function)
+            else:
+                direct = True  # Unknown call: never assume pure.
+        # Always inspect children: effects in arguments must propagate too.
+        for child in node.children():
+            if self._scan(child, caller):
+                direct = True
+        return direct
+
+    def is_pure(self, call):
+        return (not (isinstance(call, CallNode) and call.name == "read")
+                and call.function in self.callables
+                and call.function not in self.effectful)
+
+
 class RemoveUnusedVariables:
     """Prune unread local declarations, stores and unused global functions.
 
@@ -2052,21 +2127,26 @@ class RemoveUnusedVariables:
             target = target.base
         return target.decl if isinstance(target, VarNode) else None
 
-    @classmethod
-    def _effects(cls, expr):
-        # Keep the whole call: its receiver and arguments can affect its result
-        # or the outside world. Pure enclosing expressions can be discarded.
-        if isinstance(expr, (CallNode, MemberCallNode)):
+    def _effects(self, expr):
+        # Effectful calls retain their receiver/arguments as one expression.
+        # For pure calls, visit receiver then arguments to retain any effects
+        # they themselves cause, in source evaluation order.
+        if isinstance(expr, (CallNode, MemberCallNode)) and not self.effects.is_pure(expr):
             return [ExprStmtNode(expr)]
         result = []
         for child in expr.children():
-            result.extend(cls._effects(child))
+            result.extend(self._effects(child))
         return result
 
     def _statements(self, statements):
         result = []
         for statement in statements:
-            if isinstance(statement, DeclNode) and statement in self.unused:
+            if isinstance(statement, ExprStmtNode):
+                kept = self._effects(statement.expression)
+                if not (len(kept) == 1 and kept[0].expression is statement.expression):
+                    self.changed = True
+                result.extend(kept)
+            elif isinstance(statement, DeclNode) and statement in self.unused:
                 for init in statement.initializers:
                     result.extend(self._effects(init))
             elif (isinstance(statement, LambdaNode)
@@ -2084,17 +2164,18 @@ class RemoveUnusedVariables:
 
     def visit_program(self, node):
         while True:
+            self.effects = _CallEffects(node)
             counter = _UnusedReadCounter()
             node.accept(counter)
             self.unused = {decl for decl in counter.declarations
                            if counter.reads.get(decl, 0) == 0}
-            if self.unused:
-                for struct in node.structs:
-                    for method in struct.methods:
-                        method.accept(self)
-                for function in node.functions:
-                    function.accept(self)
-                node.statements = self._statements(node.statements)
+            self.changed = False
+            for struct in node.structs:
+                for method in struct.methods:
+                    method.accept(self)
+            for function in node.functions:
+                function.accept(self)
+            node.statements = self._statements(node.statements)
 
             # Lambda methods are emitted separately from their AST statements.
             # Forget generated methods belonging to a lambda pruned by Task 1
@@ -2110,7 +2191,7 @@ class RemoveUnusedVariables:
             remaining = [fn for fn in node.functions if fn in calls.reachable]
             functions_removed = len(remaining) != len(node.functions)
             node.functions = remaining
-            if not self.unused and not functions_removed:
+            if not self.unused and not functions_removed and not self.changed:
                 return
 
     def visit_function(self, node):

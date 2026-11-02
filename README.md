@@ -242,6 +242,31 @@ lambda structs are pruned. The visitor **recounts and repeats** both passes
 until no more declarations/functions are removed. This handles cascades in
 which removal makes another binding or function unreachable.
 
+**Additional Task — removing unused pure calls:** `_CallEffects` uses the
+SemanticChecker-resolved function/member targets (including callable objects
+and generated `lambda.call` methods) to build a call graph. It begins with
+direct effects: `print`, `read()`, any `while` (conservatively, it may not
+terminate), and mutating member methods, including writes to mutable lambda
+captures. Cycles of calls are conservatively effectful because recursion may
+not terminate. These summaries propagate backwards through callers to a
+**fixpoint**, so wrappers around effects remain effectful. Unknown calls are
+never presumed pure. A pure call whose return value is unused is eliminated;
+its receiver/arguments are processed left-to-right and any nested effectful
+calls are kept as `ExprStmt` nodes. A call with effects is preserved in full,
+including its receiver and arguments. The existing variable/function removal
+and lambda-structure cleanup repeat until stable. No LLVM-level optimization
+was introduced.
+
+The conservatism is intentional: a bounded recursive call, a terminating
+`while`, or a method that mutates only an unreachable object may still be
+retained. This pass does **not** prove termination or interprocedural value
+liveness. Positive and negative checks live in `tests/check_p9_pure_calls.py`,
+`tests/opt/{pure_call_chain,pure_nested_read,indirect_print,pure_callable,
+pure_lambda,mut_capture_call,while_and_recursion,member_nested_read,
+mutating_member_chain,nested_lambda_indirect_print}.*`, and
+`tests/err/p9_*`. The full runner already runs both optimized and unoptimized
+versions of every `tests/ok`, `tests/err`, and `tests/opt` program.
+
 **Known self-feeding limitation:** the analysis counts *syntactic reads* rather
 than proving variable liveness. In `i32 mut x{1}; x := x + 1; exit 0`, the RHS
 reads `x`, so the declaration and store remain, although the value is never
