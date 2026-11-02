@@ -3,35 +3,43 @@ Practice 9 — AST Optimizations
 AI tool used:
 - OpenAI ChatGPT (GPT-6).
 
-AI assistance:
-- Reviewed the existing compiler implementation.
-- Helped implement unused variable removal using AST visitors.
-- Added declaration-based read counting, scopes, shadowing,
-  captures and fixpoint optimization.
-- Helped implement unused global function removal.
-- Added call graph analysis, including recursion and lambdas.
-- Implemented conservative side-effect analysis for pure calls.
-- Preserved print, read(), mutating methods and recursive calls.
-- Reused the existing SemanticChecker and LLVM CodeGen.
-- Added optimization tests and updated documentation.
-- Assisted with debugging and regression testing.
+User requests (summarised):
+- Implement Practice 9 Tasks 1–3 and the Additional Task.
+- Preserve existing compiler functionality and regression tests.
+- Use AST visitors after SemanticChecker without major refactoring.
+- Support --remove-unused and --ast-checked.
+- Preserve side effects and correct program behavior.
+- Add optimization tests, update documentation and verify LLVM IR.
 
-Validation:
+AI-assisted implementation:
+- Implemented removal of unused variables and assignments.
+- Added declaration-based read counting, shadowing and scope handling.
+- Supported lambda captures and repeated analysis until a fixpoint.
+- Implemented removal of unreachable global functions.
+- Handled recursion, mutual recursion and transitive function calls.
+- Added conservative side-effect analysis for unused pure calls.
+- Preserved print, read(), mutating calls, loops and recursive calls.
+- Supported callable objects, lambda.call and mutable captures.
+- Reused existing AST visitors, SemanticChecker and LLVM CodeGen.
+- Added optimization fixtures, regression tests and documentation.
+
+Testing and validation:
 - check.py: 359 passed, 0 failed.
 - run_tests.py: 563 passed, 0 failed.
 - All 18 tests/check_*.py scripts passed.
-- 23 complete optimization test sets.
-- LLVM IR verified and programs executed using clang.
-- Existing functionality and tests were preserved.
+- tests/opt contains 23 complete optimization test sets.
+- tests/ok and tests/err passed with and without optimization.
+- Optimized AST snapshots and LLVM IR were verified.
+- Runtime execution was tested using clang.
+- Removed AST subtrees were checked using weakref and gc.collect().
+- Existing compiler functionality and old tests were preserved.
 
-Limitations:
+Known limitations:
 - Self-feeding variables are not fully optimized.
-- Recursive functions and loops are treated conservatively.
+- Recursion and while loops are handled conservatively.
 - Native lli was unavailable; clang was used instead.
-- Exact PDF examples could not be independently verified
-  because the Practice 9 PDF was not available.
+- The original Practice 9 PDF was unavailable during implementation.
+  Representative warm-up examples were tested, but exact correspondence
+  with all PDF examples could not be independently verified.
 
-Git:
-- Implementation completed on the local practice-9 branch.
-- Changes committed locally.
-- No push or pull request was performed.
+AI link: https://chatgpt.com/share/6ae87d19-1d64-83eb-9d97-8f6c306c55eb
