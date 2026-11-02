@@ -1,0 +1,6 @@
+i32 k{1}
+fn repeated := [k, k]() -> i32
+{
+    exit k
+}
+exit 0

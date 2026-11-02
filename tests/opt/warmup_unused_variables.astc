@@ -1,0 +1,5 @@
+Program
+  Decl used i32 const
+    Const 4
+  Exit
+    Var used

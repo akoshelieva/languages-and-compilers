@@ -1,0 +1,6 @@
+i32 k{1}
+fn f := [k](i32 k) -> i32
+{
+    exit k
+}
+exit 0

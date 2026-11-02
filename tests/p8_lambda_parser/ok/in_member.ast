@@ -1,0 +1,26 @@
+Program
+  Struct S
+    Field value i32 const
+    MemberFn compute -> i32
+      Param n i32 const
+      Block
+        Lambda add -> i32
+          Capture value const
+          Capture n const
+          Param extra i32 const
+          Block
+            Decl result i32 const
+              BinOp +
+                Var value
+                Var extra
+            Exit
+              Var result
+        Exit
+          Call add
+            Var n
+  Decl s S const
+    Const 2
+  Exit
+    MemberCall compute
+      Var s
+      Const 3

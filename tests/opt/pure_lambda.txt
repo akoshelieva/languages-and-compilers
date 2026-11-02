@@ -1,0 +1,8 @@
+i32 base{2}
+fn calc := [base](i32 n) -> i32
+{
+    i32 result{base + n}
+    exit result
+}
+i32 ignored{calc(3)}
+exit 4

@@ -1,0 +1,14 @@
+i32 mut i{0}
+i32 mut total{0}
+while i != 3
+{
+    fn step := [mut i]() -> i32
+    {
+        i := i + 1
+        exit i
+    }
+    total := total + step()
+    total := total + step()
+    i := i + 1
+}
+exit total

@@ -1,0 +1,19 @@
+Program
+  Decl base i32 const
+    Const 2
+  Lambda calc -> i32
+    Struct lambda.calc
+      Field base i32 const
+      MemberFn call -> i32
+        Param n i32 const
+        Block
+          Decl result i32 const
+            BinOp +
+              Var base
+              Var n
+          Exit
+            Var result
+    Decl calc lambda.calc const
+      Var base
+  Exit
+    Const 4

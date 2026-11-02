@@ -1,0 +1,20 @@
+Program
+  Function square -> i32
+    Param x i32 const
+    Decl r i32 const
+      BinOp *
+        Var x
+        Var x
+    Exit
+      Var r
+  Lambda no_captures -> i32
+    Param x i32 const
+    Block
+      Exit
+        Call square
+          Var x
+  Print
+    Call no_captures
+      Const 3
+  Exit
+    Const 0

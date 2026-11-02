@@ -1,0 +1,11 @@
+fn report := (i32 n) -> i32
+{
+    print(n)
+    exit n
+}
+fn wrapper := (i32 x) -> i32
+{
+    exit report(x)
+}
+i32 ignored{wrapper(5)}
+exit 4

@@ -1,0 +1,25 @@
+i32 mut n{0}
+if true
+{
+    fn inside_if := []() -> i32
+    {
+        exit 3
+    }
+    print(inside_if())
+}
+else
+{
+    fn inside_else := [n]() -> i32
+    {
+        exit n
+    }
+}
+while false
+{
+    fn inside_while := [mut n]() -> i32
+    {
+        exit n
+    }
+    n := n + 1
+}
+exit n

@@ -1,0 +1,19 @@
+Program
+  Function trace -> i32
+    Param n i32 const
+    Print
+      Var n
+    Exit
+      Var n
+  Decl ignored i32 mut
+    BinOp +
+      Call trace
+        Const 4
+      Call read
+  Assign ignored
+    BinOp +
+      Call trace
+        Const 6
+      Call read
+  Exit
+    Call read

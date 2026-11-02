@@ -1,0 +1,10 @@
+fn broken := (i32 x) -> i32
+{
+    exit x
+}
+i32 n{1}
+fn later := []() -> i32
+{
+    exit 0
+}
+exit 0

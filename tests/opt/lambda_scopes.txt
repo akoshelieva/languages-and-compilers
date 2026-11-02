@@ -1,0 +1,25 @@
+fn helper := () -> i32
+{
+    exit 2
+}
+fn dead := () -> i32
+{
+    exit 99
+}
+i32 x{5}
+if true
+{
+    i32 x{9}
+    fn show := [x]() -> i32
+    {
+        i32 result{x + helper()}
+        exit result
+    }
+    fn unused := [x]() -> i32
+    {
+        i32 result{x + dead()}
+        exit result
+    }
+    print(show())
+}
+exit 0

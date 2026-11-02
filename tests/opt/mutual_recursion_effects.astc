@@ -1,0 +1,34 @@
+Program
+  Function left -> i32
+    Param n i32 const
+    If
+      BinOp ==
+        Var n
+        Const 0
+      Block
+        Exit
+          Const 1
+    Exit
+      Call right
+        BinOp -
+          Var n
+          Const 1
+  Function right -> i32
+    Param n i32 const
+    If
+      BinOp ==
+        Var n
+        Const 0
+      Block
+        Exit
+          Const 2
+    Exit
+      Call left
+        BinOp -
+          Var n
+          Const 1
+  Decl unused i32 const
+    Call left
+      Const 3
+  Exit
+    Const 4

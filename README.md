@@ -1,16 +1,16 @@
-# languages-and-compilers — Practice 7 (Tasks 1–4 + Additional)
+# languages-and-compilers — Practices 1–9
 
-Incremental compiler for Practices 1–7. `src/compiler.py` contains the byte lexer,
-parser, AST, semantic checker and LLVM code generator; `compiler.py` is the
-compatible root CLI. Earlier practices remain supported. The original Git
-history is retained in the `practice-7` branch.
+Incremental compiler for Practices 1–9. `src/compiler.py` contains the byte lexer,
+parser, AST, semantic checker, opt-in Practice 9 AST optimizer and LLVM code
+generator; `compiler.py` is the compatible root CLI. Earlier practices remain
+supported. The original Git history is retained in the `practice-7` branch.
 
 ## Setup (venv)
 
-The corrected archive was checked with Python 3.12.14, `llvmlite` 0.50.0
-(LLVM 22.1.0) and MCJIT. Neither native `lli` nor `clang` was installed in
-this recheck environment. The original implementation had also been checked
-with Python 3.13, `llvmlite` 0.47.0 and `clang` 17.
+The final Practice 9 regression run used Python 3.13.5, `llvmlite` 0.47.0
+(LLVM 20.1.8), and `clang` 17 for compilation and execution. Native `lli` was
+not available, so `run_tests.py` used `clang`. Earlier runs also used Python
+3.12.14 with `llvmlite` 0.50.0 (LLVM 22.1.0) and MCJIT.
 
 ```bash
 python3 -m venv .venv
@@ -112,3 +112,222 @@ remain read-only, and an identical input/output path is rejected before any
 file is removed. Runner diagnostics preserve binary stdout/stderr consistently,
 including a failed clang build. All seven Task 4 negative categories now have
 `.txt`/`.expected` fixtures directly under `tests/err`.
+
+## Practice 8: callable objects and lambdas
+
+A struct whose member function is named `call` can be invoked as `object(args)`;
+`object.call(args)` remains legal. The semantic checker rewrites the first
+form into the existing member-call AST, including callable fields. Calls
+validate visible-variable/function name collisions, argument types/counts,
+and transitive member mutability, with `line:column` diagnostics.
+
+Lambdas use `fn name := [captures](params) -> type` followed by a block.
+A capture is copied at declaration time; `[name]` stores a const copy and
+`[mut name]` stores an independently mutable copy, even if the source was
+const. Each lambda is lowered by `SemanticChecker` into a uniquely named
+`lambda.<name>` struct, a `call` member method, and a declaration initialized
+from captures. Empty, nested, scoped, and loop-local lambdas are supported,
+as is capturing another lambda. The closure variable is `mut` if any capture
+is `mut`; existing mutating member-call rules apply transitively. The original
+variables are never modified by mutations of the closure's copies.
+
+The lambda body sees only its parameters, locals, captures, and global
+functions; the synthetic `call` method is not implicitly visible by name.
+A capture itself may be named `call` without colliding with the synthetic
+method. Lambda types have no source-language names and lambda objects cannot
+be passed or used as ordinary values outside permitted captures.
+
+`--ast` prints the original parse tree; `--ast-checked` prints the lowered
+AST, including synthetic structures and `CallableCall` nodes. All LLVM IR is
+created through `llvmlite.ir` (`str(module)` only serializes the module).
+
+PDF demonstration programs are `tests/ok/p8_callable_pdf_task1.txt`,
+`tests/ok/p8_lambda_pdf.txt`, and `tests/ok/p8_mut_pdf.txt`. All three have
+matching `.expected` outputs. For input-consuming tests, a same-stem `.in`
+file supplies standard input.
+
+## Practice 8: callable objects and lambdas
+
+A struct whose member function is named `call` can be invoked as `object(args)`;
+`object.call(args)` remains legal. The semantic checker rewrites the first
+form into the existing member-call AST, including callable fields. Calls
+validate visible-variable/function name collisions, argument types/counts,
+and transitive member mutability, with `line:column` diagnostics.
+
+Lambdas use `fn name := [captures](params) -> type` followed by a block.
+A capture is copied at declaration time; `[name]` stores a const copy and
+`[mut name]` stores an independently mutable copy, even if the source was
+const. Each lambda is lowered by `SemanticChecker` into a uniquely named
+`lambda.<name>` struct, a `call` member method, and a declaration initialized
+from captures. Empty, nested, scoped, and loop-local lambdas are supported,
+as is capturing another lambda. The closure variable is `mut` if any capture
+is `mut`; existing mutating member-call rules apply transitively. The original
+variables are never modified by mutations of the closure's copies.
+
+The lambda body sees only its parameters, locals, captures, and global
+functions; the synthetic `call` method is not implicitly visible by name.
+A capture itself may be named `call` without colliding with the synthetic
+method. Lambda types have no source-language names and lambda objects cannot
+be passed or used as ordinary values outside permitted captures.
+
+`--ast` prints the original parse tree; `--ast-checked` prints the lowered
+AST, including synthetic structures and `CallableCall` nodes. All LLVM IR is
+created through `llvmlite.ir` (`str(module)` only serializes the module).
+
+PDF demonstration programs are `tests/ok/p8_callable_pdf_task1.txt`,
+`tests/ok/p8_lambda_pdf.txt`, and `tests/ok/p8_mut_pdf.txt`. All three have
+matching `.expected` outputs. For input-consuming tests, a same-stem `.in`
+file supplies standard input.
+
+
+## Practice 9 — Task 1: remove unused variables
+
+`--remove-unused` optionally runs `RemoveUnusedVariables` as an AST visitor
+**after** semantic checking and **before** LLVM generation. It removes unread
+local declarations and assignments to them, using resolved declaration
+identities for shadowing, lexical scopes and captures. Lambda declarations,
+parameters and fields are not removed. Reads are recounted until a fixed point.
+A declaration or store whose initializer/RHS contains `read()` or another
+potentially effectful call remains in place, preserving evaluation order.
+
+```bash
+python compiler.py --remove-unused tests/ok/p8_mut_pdf.txt output.ll
+python compiler.py --remove-unused --ast-checked tests/ok/p8_mut_pdf.txt
+python tests/check_p9_remove_unused.py
+```
+
+Plain `--ast` remains the original parser AST; without `--remove-unused` the
+existing checked AST, LLVM generation and CLI behavior are unchanged.
+
+## Practice 9 — Task 2: remove unused global functions
+
+The same `--remove-unused` checked-AST visitor counts resolved calls of **global**
+functions from all scopes: top-level, other globals, member functions and
+lambdas. A global function with zero calls is removed together with its body.
+Calls are recounted each round, so a removed function can leave another at
+zero. A self-recursive or mutually recursive cycle still has syntactic calls
+and therefore **survives** even when not called from `main` (the specified
+counting limitation). Member functions and lambda declarations are not removed;
+generated lambda methods belonging to a deleted global function are omitted
+from LLVM emission.
+
+```bash
+python compiler.py --remove-unused --ast-checked input.txt
+python compiler.py --remove-unused input.txt output.ll
+python tests/check_p9_remove_unused_functions.py
+```
+
+Without `--remove-unused`, compilation and both AST modes retain their prior
+behavior. `--ast` always displays the original parsed tree.
+
+## Optimizations (Practice 9 — Tasks 1–3 and Additional Task)
+
+Optimization is **opt-in**: `--remove-unused` runs the existing
+`RemoveUnusedVariables` AST visitor after `SemanticChecker` has resolved
+bindings and lowered lambdas, and before `CodeGen`. The default CLI, plain
+`--ast`, and unoptimized `--ast-checked` are unchanged. To inspect the actual
+optimized AST use **both** `--remove-unused --ast-checked`.
+
+**Algorithm and fixpoint:** `_UnusedReadCounter` identifies variable *reads* by
+`VarNode.decl` identity, rather than text name, so shadowed locals, nested
+blocks and lambda captures are distinct. An assignment target is a write, not
+an implicit read. Unread declarations and stores to them are removed only if
+none of their initializers or assigned values has observable effects. With the
+Additional Task, pure calls are removable, whereas `read()`, calls containing
+an effectful argument, transitive effectful calls, mutations, loops and
+recursive calls keep the **original declaration or assignment** intact.
+Parameters, fields and lambda declarations are not removed.
+`_GlobalFunctionCalls` counts calls to resolved global functions in *all*
+retained scopes, including other global bodies and member/lambda bodies; each
+function with zero calls is pruned with its body. Counts are taken before each
+round of pruning and **recomputed** at the next round. A self-recursive or
+mutually recursive cycle survives because its call counts never reach zero.
+Orphaned generated lambda structs from removed global bodies are pruned.
+The visitor repeats both removal passes until nothing changes.
+
+**Additional Task — removing unused pure calls:** `_CallEffects` uses the
+SemanticChecker-resolved function/member targets (including callable objects
+and generated `lambda.call` methods) to build a call graph. It begins with
+direct effects: `print`, `read()`, any `while` (conservatively, it may not
+terminate), and mutating member methods, including writes to mutable lambda
+captures. Cycles of calls are conservatively effectful because recursion may
+not terminate. These summaries propagate backwards through callers to a
+**fixpoint**, so wrappers around effects remain effectful. Unknown calls are
+never presumed pure. A pure call whose return value is unused is eliminated;
+its receiver/arguments are processed left-to-right and any nested effectful
+calls are preserved in the enclosing declaration/assignment when their
+execution matters. A call with effects is preserved in full, including its
+receiver and arguments. Pure, unused initializations with no effects are
+removed. The existing variable/function removal and lambda-structure cleanup
+repeat until stable. No LLVM-level optimization was introduced.
+
+The conservatism is intentional: a bounded recursive call, a terminating
+`while`, or a method that mutates only an unreachable object may still be
+retained. This pass does **not** prove termination or interprocedural value
+liveness. Positive and negative checks live in `tests/check_p9_pure_calls.py`,
+`tests/opt/{pure_call_chain,pure_nested_read,indirect_print,pure_callable,
+pure_lambda,mut_capture_call,while_and_recursion,member_nested_read,
+mutating_member_chain,nested_lambda_indirect_print}.*`, and
+`tests/err/p9_*`. The full runner already runs both optimized and unoptimized
+versions of every `tests/ok`, `tests/err`, and `tests/opt` program.
+
+**Known self-feeding limitation:** the analysis counts *syntactic reads* rather
+than proving variable liveness. In `i32 mut x{1}; x := x + 1; exit 0`, the RHS
+reads `x`, so the declaration and store remain, although the value is never
+observed. Eliminating this case would need a more precise liveness/data-flow
+analysis and is not part of this practice. See `tests/opt/self_feeding.txt`.
+
+**AST subtree ownership in Python:** removing an item from `ProgramNode`'s
+`functions`/`statements` (or a block's `statements`) drops the parent's strong
+reference to that subtree. We **do not manually free nodes**: CPython's
+reference counting and cycle garbage collector reclaim them once there are no
+remaining references, including those from temporary semantic visitors or
+optimizer bookkeeping. Ordinary AST statements and expressions **do not store parent pointers**;
+member-function nodes have an `owner` link back to their struct, and checked
+variable/call nodes have `decl`/`function` links. These references may form
+cycles, which the collector can reclaim even when reference counting alone
+cannot. The live AST still owns all retained children. The
+`weakref.ref` checks in `tests/check_p9_optimization_suite.py` retain the
+*live root* while verifying that discarded declarations, their initializer
+nodes, removed function bodies and a lambda struct belonging to a removed
+function become unreachable after `gc.collect()`. This tests actual object release, not just
+that the optimized tree's printed shape changed.
+
+**Golden optimization fixtures:** each `tests/opt/NAME.txt` has a checked-AST
+snapshot `NAME.astc` (the exact stdout of `--remove-unused --ast-checked`)
+and a runtime output `NAME.expected`; `NAME.in` is optional stdin. The
+exact PDF programs `pdf_warmup_cascade`, `pdf_warmup_shadowing`,
+`pdf_three_functions` and `pdf_additional_pure_vs_loud`, plus
+`pdf_additional_counter` reconstructed from the PDF's `bump`/`peek`
+description, verify the specified AST and runtime behavior.
+`pdf_three_functions` produces only `user_twice` and `main` in LLVM IR and
+prints exit 4; the respective fixpoint round counts are 3, 2, 3 and 4 for the
+first four examples. Further cases cover transitive function chains, `if`/shadowing, `read()`
+and calls with side effects, no-change optimization, scoped lambda captures,
+callable objects, member calls, self-feeding, branch-local effects, indirect
+`print` in a pure-call argument and conservative mutual recursion.
+
+```bash
+python run_tests.py                         # tests/ok + tests/err in both modes; tests/opt
+python tests/check_p9_optimization_suite.py # AST fixpoint, LLVM verifier, weakref/GC
+python tests/check_p9_remove_unused.py      # Task 1 regressions
+python tests/check_p9_remove_unused_functions.py # Task 2 regressions
+python tests/check_p9_pure_calls.py # Additional Task regressions
+python tests/check_p9_final_audit.py # Conditional effects, recursion, weakref
+python compiler.py --remove-unused --ast-checked tests/opt/warmup_unused_functions.txt
+python compiler.py --remove-unused tests/opt/warmup_unused_functions.txt output.ll
+```
+
+`run_tests.py` compiles **every** `tests/ok` and `tests/err` fixture both
+without and with `--remove-unused`, comparing the existing `.expected`
+outputs/errors verbatim. It also checks `tests/opt` output in *both* modes,
+LLVM IR validity, the optimized `.astc` golden, and that `--remove-unused`
+does not alter plain `--ast`. `no_optimization` additionally checks that
+checked AST output is identical with and without optimization. The old
+fixtures and test files were not changed. The final audit also runs all
+`tests/check_*.py` programs, LLVM verification, and the `clang` execution
+backend; its extra regressions are in `tests/check_p9_final_audit.py` and the
+`tests/opt/{branch_read_effects,effectful_arg_in_pure_call,mutual_recursion_effects}.*`
+fixtures. Those cases explicitly ensure that effects stay within their `if`
+branch, pure wrappers disappear without dropping an effectful argument, and
+mutual recursion is conservatively preserved.

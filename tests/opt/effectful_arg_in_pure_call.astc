@@ -1,0 +1,21 @@
+Program
+  Function emit -> i32
+    Param x i32 const
+    Print
+      Var x
+    Exit
+      Var x
+  Function passthrough -> i32
+    Param x i32 const
+    Decl result i32 const
+      BinOp +
+        Var x
+        Const 1
+    Exit
+      Var result
+  Decl unused i32 const
+    Call passthrough
+      Call emit
+        Call read
+  Exit
+    Const 4

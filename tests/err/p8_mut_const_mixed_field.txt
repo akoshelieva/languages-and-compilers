@@ -1,0 +1,12 @@
+i32 a{1}
+i32 b{2}
+fn mixing := [a, mut b]() -> i32
+{
+    b := b + a
+    exit b
+}
+fn frozen := [mixing]() -> i32
+{
+    exit mixing()
+}
+exit frozen()

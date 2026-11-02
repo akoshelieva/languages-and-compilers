@@ -1,0 +1,8 @@
+i32 mut r{0}
+i32 x{1}
+if true
+{
+    i32 x{10}
+    r := x
+}
+exit r

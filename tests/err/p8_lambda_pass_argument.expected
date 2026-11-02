@@ -1,0 +1,1 @@
+compilation error: line 9:12: 'f' is a lambda and cannot be passed to 'takes': its type has no name, so no parameter can have it

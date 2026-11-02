@@ -1,0 +1,5 @@
+fn f := [ghost]() -> i32
+{
+    exit 1
+}
+exit 0

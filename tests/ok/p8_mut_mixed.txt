@@ -1,0 +1,11 @@
+i32 a{4}
+i32 b{1}
+fn mixed := [a, mut b](i32 d) -> i32
+{
+    b := b + d
+    i32 result{a + b}
+    exit result
+}
+print(mixed(2))
+print(mixed(3))
+exit b

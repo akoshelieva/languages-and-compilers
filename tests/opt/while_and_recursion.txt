@@ -1,0 +1,19 @@
+fn counting := (i32 n) -> i32
+{
+    if n == 0
+    {
+        exit 4
+    }
+    exit counting(n - 1)
+}
+fn loop := () -> i32
+{
+    i32 mut n{0}
+    while n != 2
+    {
+        n := n + 1
+    }
+    exit n
+}
+i32 ignored{counting(3) + loop()}
+exit 4

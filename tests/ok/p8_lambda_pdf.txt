@@ -1,0 +1,26 @@
+fn sq := (i32 v) -> i32
+{
+    i32 r{v * v}
+    exit r
+}
+fn sum_scaled := (i32 factor, i32 a, i32 b) -> i32
+{
+    fn times := [factor](i32 v) -> i32
+    {
+        i32 r{factor * sq(v)}
+        exit r
+    }
+    i32 s{times(a) + times(b)}
+    exit s
+}
+i32 mut k{10}
+fn add_k := [k](i32 y) -> i32
+{
+    i32 r{k + y}
+    exit r
+}
+k := 100
+print(add_k(5))
+print(k)
+print(sum_scaled(2, 3, 4))
+exit add_k(1)

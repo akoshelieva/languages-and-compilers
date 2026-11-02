@@ -1,0 +1,8 @@
+i32 mut k{4}
+fn snapshot := [k]() -> i32
+{
+    exit k
+}
+k := 99
+print(snapshot())
+exit k

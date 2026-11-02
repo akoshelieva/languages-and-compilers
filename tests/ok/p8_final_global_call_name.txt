@@ -1,0 +1,9 @@
+fn call := () -> i32
+{
+    exit 7
+}
+fn f := []() -> i32
+{
+    exit call()
+}
+exit f()

@@ -1,0 +1,36 @@
+Program
+  Function counting -> i32
+    Param n i32 const
+    If
+      BinOp ==
+        Var n
+        Const 0
+      Block
+        Exit
+          Const 4
+    Exit
+      Call counting
+        BinOp -
+          Var n
+          Const 1
+  Function loop -> i32
+    Decl n i32 mut
+      Const 0
+    While
+      BinOp !=
+        Var n
+        Const 2
+      Block
+        Assign n
+          BinOp +
+            Var n
+            Const 1
+    Exit
+      Var n
+  Decl ignored i32 const
+    BinOp +
+      Call counting
+        Const 3
+      Call loop
+  Exit
+    Const 4

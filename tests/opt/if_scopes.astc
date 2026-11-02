@@ -1,0 +1,10 @@
+Program
+  If
+    Bool true
+    Block
+      Decl value i32 const
+        Const 9
+      Print
+        Var value
+  Exit
+    Const 0
