@@ -1,0 +1,12 @@
+Program
+  Struct Holder
+    Field n i32 const
+    MemberFn value -> i32
+      Block
+        Exit
+          Call helper
+  Function helper -> i32
+    Exit
+      Const 4
+  Exit
+    Const 0

@@ -218,3 +218,71 @@ python tests/check_p9_remove_unused_functions.py
 
 Without `--remove-unused`, compilation and both AST modes retain their prior
 behavior. `--ast` always displays the original parsed tree.
+
+## Optimizations (Practice 9 — Task 3: tests and documentation)
+
+Optimization is **opt-in**: `--remove-unused` runs the existing
+`RemoveUnusedVariables` AST visitor after `SemanticChecker` has resolved
+bindings and lowered lambdas, and before `CodeGen`. The default CLI, plain
+`--ast`, and unoptimized `--ast-checked` are unchanged. To inspect the actual
+optimized AST use **both** `--remove-unused --ast-checked`.
+
+**Algorithm and fixpoint:** `_UnusedReadCounter` identifies variable *reads* by
+`VarNode.decl` identity, rather than text name, so shadowed locals, nested
+blocks and lambda captures are distinct. An assignment target is a write, not
+an implicit read. Unread declarations, stores to them, and unused lambdas are
+removed. Initializers/RHS expressions with potentially observable effects
+(`read()`, global calls, member/callable calls) are retained in evaluation
+order as `ExprStmtNode`s. `_GlobalFunctionCalls` follows resolved function
+calls starting at the program statements/exit and retained member/lambda
+methods, recursively marking reachable global functions. Unreachable globals
+(including dead self-recursion and mutual-recursion cycles) are removed with
+their bodies; member functions and live lambdas remain. Orphaned synthetic
+lambda structs are pruned. The visitor **recounts and repeats** both passes
+until no more declarations/functions are removed. This handles cascades in
+which removal makes another binding or function unreachable.
+
+**Known self-feeding limitation:** the analysis counts *syntactic reads* rather
+than proving variable liveness. In `i32 mut x{1}; x := x + 1; exit 0`, the RHS
+reads `x`, so the declaration and store remain, although the value is never
+observed. Eliminating this case would need a more precise liveness/data-flow
+analysis and is not part of this practice. See `tests/opt/self_feeding.txt`.
+
+**AST subtree ownership in Python:** removing an item from `ProgramNode`'s
+`functions`/`statements` (or a block's `statements`) drops the parent's strong
+reference to that subtree. We **do not manually free nodes**: CPython's
+reference counting and cycle garbage collector reclaim them once there are no
+remaining references, including those from temporary semantic visitors or
+optimizer bookkeeping. The live AST still owns all retained children. The
+`weakref.ref` checks in `tests/check_p9_optimization_suite.py` retain the
+*live root* while verifying that discarded declarations, their initializer
+nodes, removed function bodies and a dead lambda's generated struct become
+unreachable after `gc.collect()`. This tests actual object release, not just
+that the optimized tree's printed shape changed.
+
+**Golden optimization fixtures:** each `tests/opt/NAME.txt` has a checked-AST
+snapshot `NAME.astc` (the exact stdout of `--remove-unused --ast-checked`)
+and a runtime output `NAME.expected`; `NAME.in` is optional stdin. The two
+warm-up reproductions demonstrate unread variables and unused functions
+(`twice(2)` produces only `user_twice` and `main` in LLVM IR and prints exit
+4). Further cases cover transitive function chains, `if`/shadowing, `read()`
+and calls with side effects, no-change optimization, scoped lambda captures,
+callable objects, member calls and the self-feeding limitation.
+
+```bash
+python run_tests.py                         # tests/ok + tests/err in both modes; tests/opt
+python tests/check_p9_optimization_suite.py # AST fixpoint, LLVM verifier, weakref/GC
+python tests/check_p9_remove_unused.py      # Task 1 regressions
+python tests/check_p9_remove_unused_functions.py # Task 2 regressions
+python compiler.py --remove-unused --ast-checked tests/opt/warmup_unused_functions.txt
+python compiler.py --remove-unused tests/opt/warmup_unused_functions.txt output.ll
+```
+
+`run_tests.py` compiles **every** `tests/ok` and `tests/err` fixture both
+without and with `--remove-unused`, comparing the existing `.expected`
+outputs/errors verbatim. It also checks `tests/opt` output in *both* modes,
+LLVM IR validity, the optimized `.astc` golden, and that `--remove-unused`
+does not alter plain `--ast`. `no_optimization` additionally checks that
+checked AST output is identical with and without optimization. The old
+fixtures and test files were not changed. No additional optimization task is
+implemented here.

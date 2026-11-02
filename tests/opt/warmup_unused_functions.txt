@@ -1,0 +1,10 @@
+fn unused := () -> i32
+{
+    exit 9
+}
+fn twice := (i32 x) -> i32
+{
+    i32 doubled{x * 2}
+    exit doubled
+}
+exit twice(2)

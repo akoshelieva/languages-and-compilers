@@ -1,0 +1,17 @@
+struct Holder
+{
+    i32 n
+    fn value := () -> i32
+    {
+        exit helper()
+    }
+}
+fn helper := () -> i32
+{
+    exit 4
+}
+fn dead := () -> i32
+{
+    exit 8
+}
+exit 0

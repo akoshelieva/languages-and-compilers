@@ -1,0 +1,8 @@
+fn add_one := (i32 x) -> i32
+{
+    i32 sum{x + 1}
+    exit sum
+}
+i32 value{add_one(3)}
+print(value)
+exit value

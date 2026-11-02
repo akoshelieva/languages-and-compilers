@@ -1,0 +1,27 @@
+Program
+  Struct Multiplier
+    Field factor i32 const
+    MemberFn call -> i32
+      Param n i32 const
+      Block
+        Exit
+          Call helper
+            BinOp *
+              Var n
+              Var factor
+  Function helper -> i32
+    Param x i32 const
+    Decl result i32 const
+      BinOp +
+        Var x
+        Const 1
+    Exit
+      Var result
+  Decl twice Multiplier const
+    Const 2
+  Decl result i32 const
+    CallableCall twice
+      Var twice
+      Const 2
+  Exit
+    Var result

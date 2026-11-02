@@ -1,0 +1,19 @@
+Program
+  Function trace -> i32
+    Param n i32 const
+    Print
+      Var n
+    Exit
+      Var n
+  ExprStmt
+    Call trace
+      Const 4
+  ExprStmt
+    Call read
+  ExprStmt
+    Call trace
+      Const 6
+  ExprStmt
+    Call read
+  Exit
+    Call read

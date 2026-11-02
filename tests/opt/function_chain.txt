@@ -1,0 +1,25 @@
+fn start := () -> i32
+{
+    exit step()
+}
+fn step := () -> i32
+{
+    exit finish()
+}
+fn finish := () -> i32
+{
+    exit 4
+}
+fn dead_start := () -> i32
+{
+    exit dead_finish()
+}
+fn dead_finish := () -> i32
+{
+    exit 9
+}
+fn dead_recursive := (i32 n) -> i32
+{
+    exit dead_recursive(n)
+}
+exit start()
