@@ -198,3 +198,23 @@ python tests/check_p9_remove_unused.py
 
 Plain `--ast` remains the original parser AST; without `--remove-unused` the
 existing checked AST, LLVM generation and CLI behavior are unchanged.
+
+## Practice 9 — Task 2: remove unused global functions
+
+The same `--remove-unused` checked-AST visitor also removes unreachable **global**
+functions, including their bodies. It follows semantically resolved calls from
+`main` and retained member/lambda methods, then transitively through called
+global functions. Unreachable self-recursion and mutually recursive groups are
+removed; member functions and live lambdas are not targets of this pass.
+Generated lambda methods orphaned by Task 1 or a removed global function are
+excluded from LLVM emission. Function reachability and unused-variable removal
+repeat to a fixed point, preserving calls with possible side effects.
+
+```bash
+python compiler.py --remove-unused --ast-checked input.txt
+python compiler.py --remove-unused input.txt output.ll
+python tests/check_p9_remove_unused_functions.py
+```
+
+Without `--remove-unused`, compilation and both AST modes retain their prior
+behavior. `--ast` always displays the original parsed tree.

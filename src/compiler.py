@@ -1972,8 +1972,72 @@ class _UnusedReadCounter:
         node.value.accept(self)
 
 
+class _GlobalFunctionCalls:
+    """Find global functions reachable from top-level code and retained methods.
+
+    Calls are matched to SemanticChecker-resolved FunctionNode objects, so
+    implicit member calls and callable lambdas are not mistaken for globals.
+    """
+
+    def __init__(self, functions):
+        self.functions = set(functions)
+        self.reachable = set()
+        self.calls = {function: 0 for function in functions}
+        self.seen_calls = set()
+        self.pending = []
+
+    def visit_children(self, node):
+        for child in node.children():
+            child.accept(self)
+
+    def __getattr__(self, name):
+        if name.startswith("visit_"):
+            return self.visit_children
+        raise AttributeError(name)
+
+    def visit_program(self, node):
+        for struct in node.structs + node.generated_structs:
+            struct.accept(self)
+        for statement in node.statements:
+            statement.accept(self)
+        node.exit_node.accept(self)
+        while self.pending:
+            self.pending.pop().accept(self)
+
+    def visit_call(self, node):
+        function = node.function
+        if function in self.functions:
+            if node not in self.seen_calls:
+                self.seen_calls.add(node)
+                self.calls[function] += 1
+            if function not in self.reachable:
+                self.reachable.add(function)
+                self.pending.append(function)
+        self.visit_children(node)
+
+
+class _LiveLambdaStructs:
+    """Collect generated lambda types still referenced by the retained AST."""
+
+    def __init__(self):
+        self.structs = set()
+
+    def visit_children(self, node):
+        for child in node.children():
+            child.accept(self)
+
+    def __getattr__(self, name):
+        if name.startswith("visit_"):
+            return self.visit_children
+        raise AttributeError(name)
+
+    def visit_lambda(self, node):
+        self.structs.add(node.synthetic_struct)
+        self.visit_children(node)
+
+
 class RemoveUnusedVariables:
-    """Prune unread local declarations and their stores, to a fixed point.
+    """Prune unread local declarations, stores and unused global functions.
 
     Run only on a tree already checked by SemanticChecker: VarNode.decl and
     AssignNode.decl identify the binding, including shadows and captures.
@@ -2024,14 +2088,30 @@ class RemoveUnusedVariables:
             node.accept(counter)
             self.unused = {decl for decl in counter.declarations
                            if counter.reads.get(decl, 0) == 0}
-            if not self.unused:
+            if self.unused:
+                for struct in node.structs:
+                    for method in struct.methods:
+                        method.accept(self)
+                for function in node.functions:
+                    function.accept(self)
+                node.statements = self._statements(node.statements)
+
+            # Lambda methods are emitted separately from their AST statements.
+            # Forget generated methods belonging to a lambda pruned by Task 1
+            # or to a function removed in a previous iteration.
+            live_lambdas = _LiveLambdaStructs()
+            for root in node.structs + node.functions + node.statements:
+                root.accept(live_lambdas)
+            node.generated_structs = [struct for struct in node.generated_structs
+                                      if struct in live_lambdas.structs]
+
+            calls = _GlobalFunctionCalls(node.functions)
+            node.accept(calls)
+            remaining = [fn for fn in node.functions if fn in calls.reachable]
+            functions_removed = len(remaining) != len(node.functions)
+            node.functions = remaining
+            if not self.unused and not functions_removed:
                 return
-            for struct in node.structs:
-                for method in struct.methods:
-                    method.accept(self)
-            for function in node.functions:
-                function.accept(self)
-            node.statements = self._statements(node.statements)
 
     def visit_function(self, node):
         node.body = self._statements(node.body)
