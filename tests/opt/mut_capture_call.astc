@@ -14,10 +14,10 @@ Program
             Var base
     Decl bump lambda.bump mut
       Var base
-  ExprStmt
+  Decl ignored i32 const
     CallableCall bump
       Var bump
-  ExprStmt
+  Decl ignored_explicit i32 const
     CallableCall bump
       Var bump
   Exit

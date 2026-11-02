@@ -1,11 +1,17 @@
 Program
+  Function identity -> i32
+    Param n i32 const
+    Exit
+      Var n
   If
     Bool false
     Block
-      ExprStmt
-        Call read
+      Decl ignored i32 const
+        Call identity
+          Call read
     Block
-      ExprStmt
-        Call read
+      Decl ignored i32 const
+        Call identity
+          Call read
   Exit
     Call read

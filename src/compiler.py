@@ -1949,6 +1949,7 @@ class _UnusedReadCounter:
     def __init__(self):
         self.declarations = set()
         self.reads = {}
+        self.assignments = {}
 
     def visit_children(self, node):
         for child in node.children():
@@ -1960,7 +1961,9 @@ class _UnusedReadCounter:
         raise AttributeError(name)
 
     def visit_decl(self, node):
-        self.declarations.add(node)
+        # A lambda is a language-level declaration, not a disposable local.
+        if not getattr(node, "synthetic_lambda", False):
+            self.declarations.add(node)
         self.visit_children(node)
 
     def visit_var(self, node):
@@ -1968,23 +1971,28 @@ class _UnusedReadCounter:
             self.reads[node.decl] = self.reads.get(node.decl, 0) + 1
 
     def visit_assign(self, node):
-        # A whole-variable or field store is not a read of its destination.
+        # A store is not a read, but retain its RHS for the effect check.
+        target = node.target if node.target is not None else node
+        while isinstance(target, FieldAccessNode):
+            target = target.base
+        decl = target.decl if isinstance(target, VarNode) else node.decl
+        if isinstance(decl, DeclNode):
+            self.assignments.setdefault(decl, []).append(node)
         node.value.accept(self)
 
 
 class _GlobalFunctionCalls:
-    """Find global functions reachable from top-level code and retained methods.
+    """Count resolved global calls throughout the retained AST.
 
-    Calls are matched to SemanticChecker-resolved FunctionNode objects, so
-    implicit member calls and callable lambdas are not mistaken for globals.
+    A call within another global function counts even if that function is not
+    called from main.  In particular, mutually recursive cycles stay: ordinary
+    use counting (unlike reachability analysis) cannot remove cycles.
     """
 
     def __init__(self, functions):
         self.functions = set(functions)
-        self.reachable = set()
         self.calls = {function: 0 for function in functions}
         self.seen_calls = set()
-        self.pending = []
 
     def visit_children(self, node):
         for child in node.children():
@@ -1996,23 +2004,15 @@ class _GlobalFunctionCalls:
         raise AttributeError(name)
 
     def visit_program(self, node):
-        for struct in node.structs + node.generated_structs:
-            struct.accept(self)
-        for statement in node.statements:
-            statement.accept(self)
-        node.exit_node.accept(self)
-        while self.pending:
-            self.pending.pop().accept(self)
+        # Lambda methods are reached via their LambdaNode, not a second time
+        # through generated_structs.  Count each call node only once.
+        for root in node.structs + node.functions + node.statements + [node.exit_node]:
+            root.accept(self)
 
     def visit_call(self, node):
-        function = node.function
-        if function in self.functions:
-            if node not in self.seen_calls:
-                self.seen_calls.add(node)
-                self.calls[function] += 1
-            if function not in self.reachable:
-                self.reachable.add(function)
-                self.pending.append(function)
+        if node.function in self.functions and node not in self.seen_calls:
+            self.seen_calls.add(node)
+            self.calls[node.function] += 1
         self.visit_children(node)
 
 
@@ -2127,6 +2127,12 @@ class RemoveUnusedVariables:
             target = target.base
         return target.decl if isinstance(target, VarNode) else None
 
+    def _has_effect(self, expr):
+        if (isinstance(expr, (CallNode, MemberCallNode))
+                and not self.effects.is_pure(expr)):
+            return True
+        return any(self._has_effect(child) for child in expr.children())
+
     def _effects(self, expr):
         # Effectful calls retain their receiver/arguments as one expression.
         # For pure calls, visit receiver then arguments to retain any effects
@@ -2149,10 +2155,6 @@ class RemoveUnusedVariables:
             elif isinstance(statement, DeclNode) and statement in self.unused:
                 for init in statement.initializers:
                     result.extend(self._effects(init))
-            elif (isinstance(statement, LambdaNode)
-                  and statement.synthetic_decl in self.unused):
-                # Lambda captures are copies of already evaluated values.
-                continue
             elif (isinstance(statement, AssignNode)
                   and self._target_decl(statement) in self.unused):
                 result.extend(self._effects(statement.value))
@@ -2167,8 +2169,18 @@ class RemoveUnusedVariables:
             self.effects = _CallEffects(node)
             counter = _UnusedReadCounter()
             node.accept(counter)
-            self.unused = {decl for decl in counter.declarations
-                           if counter.reads.get(decl, 0) == 0}
+            self.unused = {
+                decl for decl in counter.declarations
+                if counter.reads.get(decl, 0) == 0
+                and not any(self._has_effect(init) for init in decl.initializers)
+                and not any(self._has_effect(assign.value)
+                            for assign in counter.assignments.get(decl, ()))
+            }
+            # Count global calls on this round's tree before pruning.  A call
+            # disappearing with an unused declaration affects the *next*
+            # round, as in the PDF's square/quiet example.
+            calls = _GlobalFunctionCalls(node.functions)
+            node.accept(calls)
             self.changed = False
             for struct in node.structs:
                 for method in struct.methods:
@@ -2186,9 +2198,7 @@ class RemoveUnusedVariables:
             node.generated_structs = [struct for struct in node.generated_structs
                                       if struct in live_lambdas.structs]
 
-            calls = _GlobalFunctionCalls(node.functions)
-            node.accept(calls)
-            remaining = [fn for fn in node.functions if fn in calls.reachable]
+            remaining = [fn for fn in node.functions if calls.calls[fn] > 0]
             functions_removed = len(remaining) != len(node.functions)
             node.functions = remaining
             if not self.unused and not functions_removed and not self.changed:

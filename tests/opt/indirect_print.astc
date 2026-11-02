@@ -10,7 +10,7 @@ Program
     Exit
       Call report
         Var x
-  ExprStmt
+  Decl ignored i32 const
     Call wrapper
       Const 5
   Exit

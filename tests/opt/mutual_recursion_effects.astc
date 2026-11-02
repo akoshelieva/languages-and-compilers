@@ -27,7 +27,7 @@ Program
         BinOp -
           Var n
           Const 1
-  ExprStmt
+  Decl unused i32 const
     Call left
       Const 3
   Exit

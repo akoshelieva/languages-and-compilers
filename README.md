@@ -184,11 +184,11 @@ file supplies standard input.
 
 `--remove-unused` optionally runs `RemoveUnusedVariables` as an AST visitor
 **after** semantic checking and **before** LLVM generation. It removes unread
-local declarations (including unused lambdas) and assignments to them, using
-resolved declaration identities for shadowing, lexical scopes and captures.
-Reads are recounted until a fixed point. `read()` and function/member calls
-from removed initializers and assignments are retained as internal expression
-statements, preserving their possible side effects and evaluation order.
+local declarations and assignments to them, using resolved declaration
+identities for shadowing, lexical scopes and captures. Lambda declarations,
+parameters and fields are not removed. Reads are recounted until a fixed point.
+A declaration or store whose initializer/RHS contains `read()` or another
+potentially effectful call remains in place, preserving evaluation order.
 
 ```bash
 python compiler.py --remove-unused tests/ok/p8_mut_pdf.txt output.ll
@@ -201,14 +201,15 @@ existing checked AST, LLVM generation and CLI behavior are unchanged.
 
 ## Practice 9 — Task 2: remove unused global functions
 
-The same `--remove-unused` checked-AST visitor also removes unreachable **global**
-functions, including their bodies. It follows semantically resolved calls from
-`main` and retained member/lambda methods, then transitively through called
-global functions. Unreachable self-recursion and mutually recursive groups are
-removed; member functions and live lambdas are not targets of this pass.
-Generated lambda methods orphaned by Task 1 or a removed global function are
-excluded from LLVM emission. Function reachability and unused-variable removal
-repeat to a fixed point, preserving calls with possible side effects.
+The same `--remove-unused` checked-AST visitor counts resolved calls of **global**
+functions from all scopes: top-level, other globals, member functions and
+lambdas. A global function with zero calls is removed together with its body.
+Calls are recounted each round, so a removed function can leave another at
+zero. A self-recursive or mutually recursive cycle still has syntactic calls
+and therefore **survives** even when not called from `main` (the specified
+counting limitation). Member functions and lambda declarations are not removed;
+generated lambda methods belonging to a deleted global function are omitted
+from LLVM emission.
 
 ```bash
 python compiler.py --remove-unused --ast-checked input.txt
@@ -230,17 +231,19 @@ optimized AST use **both** `--remove-unused --ast-checked`.
 **Algorithm and fixpoint:** `_UnusedReadCounter` identifies variable *reads* by
 `VarNode.decl` identity, rather than text name, so shadowed locals, nested
 blocks and lambda captures are distinct. An assignment target is a write, not
-an implicit read. Unread declarations, stores to them, and unused lambdas are
-removed. Initializers/RHS expressions with potentially observable effects
-(`read()`, global calls, member/callable calls) are retained in evaluation
-order as `ExprStmtNode`s. `_GlobalFunctionCalls` follows resolved function
-calls starting at the program statements/exit and retained member/lambda
-methods, recursively marking reachable global functions. Unreachable globals
-(including dead self-recursion and mutual-recursion cycles) are removed with
-their bodies; member functions and live lambdas remain. Orphaned synthetic
-lambda structs are pruned. The visitor **recounts and repeats** both passes
-until no more declarations/functions are removed. This handles cascades in
-which removal makes another binding or function unreachable.
+an implicit read. Unread declarations and stores to them are removed only if
+none of their initializers or assigned values has observable effects. With the
+Additional Task, pure calls are removable, whereas `read()`, calls containing
+an effectful argument, transitive effectful calls, mutations, loops and
+recursive calls keep the **original declaration or assignment** intact.
+Parameters, fields and lambda declarations are not removed.
+`_GlobalFunctionCalls` counts calls to resolved global functions in *all*
+retained scopes, including other global bodies and member/lambda bodies; each
+function with zero calls is pruned with its body. Counts are taken before each
+round of pruning and **recomputed** at the next round. A self-recursive or
+mutually recursive cycle survives because its call counts never reach zero.
+Orphaned generated lambda structs from removed global bodies are pruned.
+The visitor repeats both removal passes until nothing changes.
 
 **Additional Task — removing unused pure calls:** `_CallEffects` uses the
 SemanticChecker-resolved function/member targets (including callable objects
@@ -252,10 +255,11 @@ not terminate. These summaries propagate backwards through callers to a
 **fixpoint**, so wrappers around effects remain effectful. Unknown calls are
 never presumed pure. A pure call whose return value is unused is eliminated;
 its receiver/arguments are processed left-to-right and any nested effectful
-calls are kept as `ExprStmt` nodes. A call with effects is preserved in full,
-including its receiver and arguments. The existing variable/function removal
-and lambda-structure cleanup repeat until stable. No LLVM-level optimization
-was introduced.
+calls are preserved in the enclosing declaration/assignment when their
+execution matters. A call with effects is preserved in full, including its
+receiver and arguments. Pure, unused initializations with no effects are
+removed. The existing variable/function removal and lambda-structure cleanup
+repeat until stable. No LLVM-level optimization was introduced.
 
 The conservatism is intentional: a bounded recursive call, a terminating
 `while`, or a method that mutates only an unreachable object may still be
@@ -278,19 +282,27 @@ analysis and is not part of this practice. See `tests/opt/self_feeding.txt`.
 reference to that subtree. We **do not manually free nodes**: CPython's
 reference counting and cycle garbage collector reclaim them once there are no
 remaining references, including those from temporary semantic visitors or
-optimizer bookkeeping. The live AST still owns all retained children. The
+optimizer bookkeeping. Ordinary AST statements and expressions **do not store parent pointers**;
+member-function nodes have an `owner` link back to their struct, and checked
+variable/call nodes have `decl`/`function` links. These references may form
+cycles, which the collector can reclaim even when reference counting alone
+cannot. The live AST still owns all retained children. The
 `weakref.ref` checks in `tests/check_p9_optimization_suite.py` retain the
 *live root* while verifying that discarded declarations, their initializer
-nodes, removed function bodies and a dead lambda's generated struct become
-unreachable after `gc.collect()`. This tests actual object release, not just
+nodes, removed function bodies and a lambda struct belonging to a removed
+function become unreachable after `gc.collect()`. This tests actual object release, not just
 that the optimized tree's printed shape changed.
 
 **Golden optimization fixtures:** each `tests/opt/NAME.txt` has a checked-AST
 snapshot `NAME.astc` (the exact stdout of `--remove-unused --ast-checked`)
-and a runtime output `NAME.expected`; `NAME.in` is optional stdin. The two
-warm-up reproductions demonstrate unread variables and unused functions
-(`twice(2)` produces only `user_twice` and `main` in LLVM IR and prints exit
-4). Further cases cover transitive function chains, `if`/shadowing, `read()`
+and a runtime output `NAME.expected`; `NAME.in` is optional stdin. The
+exact PDF programs `pdf_warmup_cascade`, `pdf_warmup_shadowing`,
+`pdf_three_functions` and `pdf_additional_pure_vs_loud`, plus
+`pdf_additional_counter` reconstructed from the PDF's `bump`/`peek`
+description, verify the specified AST and runtime behavior.
+`pdf_three_functions` produces only `user_twice` and `main` in LLVM IR and
+prints exit 4; the respective fixpoint round counts are 3, 2, 3 and 4 for the
+first four examples. Further cases cover transitive function chains, `if`/shadowing, `read()`
 and calls with side effects, no-change optimization, scoped lambda captures,
 callable objects, member calls, self-feeding, branch-local effects, indirect
 `print` in a pure-call argument and conservative mutual recursion.

@@ -55,7 +55,7 @@ class PureCallOptimizationTests(unittest.TestCase):
         self.assertEqual({fn.name for fn in effects.effectful}, {"report", "wrapper"})
         after = optimized("indirect_print")
         self.assertEqual([fn.name for fn in after.functions], ["report", "wrapper"])
-        self.assertIn("ExprStmt\n    Call wrapper", ast_text(after))
+        self.assertIn("Decl ignored i32 const\n    Call wrapper", ast_text(after))
         self.assertEqual(user_definitions(ir_text(after)), {"user_report", "user_wrapper"})
 
     def test_pure_chain_cascades_to_no_global_functions(self):
@@ -71,12 +71,11 @@ class PureCallOptimizationTests(unittest.TestCase):
 
     def test_pure_calls_preserve_nested_read_order(self):
         tree = optimized("pure_nested_read")
-        self.assertFalse(tree.functions)
-        self.assertEqual(len(tree.statements), 2)
-        self.assertTrue(all(isinstance(stmt, ExprStmtNode) for stmt in tree.statements))
-        self.assertEqual([stmt.expression.name for stmt in tree.statements], ["read", "read"])
-        self.assertEqual([type(stmt.expression) for stmt in tree.statements], [CallNode]*2)
-        self.assertFalse(user_definitions(ir_text(tree)))
+        self.assertEqual([fn.name for fn in tree.functions], ["identity", "double"])
+        self.assertEqual(len(tree.statements), 1)
+        self.assertIn("Decl unused", ast_text(tree))
+        self.assertEqual(ast_text(tree).count("Call read"), 3)
+        self.assertEqual(user_definitions(ir_text(tree)), {"user_identity", "user_double"})
 
     def test_pure_member_call_elided_not_method_definition(self):
         tree = optimized("pure_callable")
@@ -87,20 +86,22 @@ class PureCallOptimizationTests(unittest.TestCase):
         main_body = ir.split('define i32 @"main"()', 1)[1]
         self.assertNotIn('call.member.call', main_body)
 
-    def test_pure_lambda_and_capture_pruned(self):
+    def test_pure_lambda_stays_but_unused_pure_call_goes(self):
         tree = optimized("pure_lambda")
-        self.assertFalse(tree.statements)
-        self.assertFalse(tree.generated_structs)
-        self.assertNotIn('lambda.calc', ir_text(tree))
+        self.assertEqual(len(tree.statements), 2)
+        self.assertEqual(len(tree.generated_structs), 1)
+        self.assertIn('Lambda calc', ast_text(tree))
+        self.assertNotIn('Decl ignored', ast_text(tree))
+        self.assertIn('lambda.calc', ir_text(tree))
 
     def test_mutating_capture_keeps_lambda_call(self):
         tree = optimized("mut_capture_call")
         self.assertEqual(len(tree.generated_structs), 1)
         self.assertEqual(len(tree.statements), 4)
         for statement in tree.statements[-2:]:
-            self.assertIsInstance(statement, ExprStmtNode)
-            self.assertIsInstance(statement.expression, MemberCallNode)
-            self.assertTrue(statement.expression.function.mutating)
+            self.assertEqual(statement.name.startswith("ignored"), True)
+            self.assertIsInstance(statement.initializers[0], MemberCallNode)
+            self.assertTrue(statement.initializers[0].function.mutating)
         self.assertIn('CallableCall bump', ast_text(tree))
         ir_text(tree)
 
@@ -108,15 +109,17 @@ class PureCallOptimizationTests(unittest.TestCase):
         tree = parse_fixture("while_and_recursion")
         self.assertEqual({fn.name for fn in _CallEffects(tree).effectful}, {"counting", "loop"})
         tree.accept(RemoveUnusedVariables())
-        self.assertEqual(len(tree.statements), 2)
+        self.assertEqual(len(tree.statements), 1)
+        self.assertIn('Decl ignored', ast_text(tree))
         self.assertEqual(len(tree.functions), 2)
         self.assertEqual(user_definitions(ir_text(tree)), {"user_counting", "user_loop"})
 
     def test_pure_callable_preserves_effectful_arguments(self):
         tree = optimized("member_nested_read")
         self.assertEqual(len(tree.statements), 2)
-        self.assertEqual([stmt.expression.name for stmt in tree.statements], ["read", "read"])
-        self.assertNotIn('call.member.call', ir_text(tree).split('define i32 @"main"()', 1)[1])
+        self.assertIn('Decl ignored', ast_text(tree))
+        self.assertEqual(ast_text(tree).count('Call read'), 3)
+        self.assertIn('call.member.call', ir_text(tree).split('define i32 @"main"()', 1)[1])
 
     def test_transitive_mutating_member_chain_is_preserved(self):
         tree = parse_fixture("mutating_member_chain")
@@ -126,7 +129,7 @@ class PureCallOptimizationTests(unittest.TestCase):
         self.assertIn(members['proxy'], effects.effectful)
         tree.accept(RemoveUnusedVariables())
         self.assertEqual(len(tree.statements), 2)
-        self.assertIsInstance(tree.statements[-1], ExprStmtNode)
+        self.assertEqual(tree.statements[-1].name, 'unused')
         self.assertIn('call.member.proxy', ir_text(tree))
 
     def test_effect_propagates_from_nested_lambda_to_global(self):

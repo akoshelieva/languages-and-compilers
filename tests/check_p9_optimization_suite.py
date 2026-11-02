@@ -71,10 +71,10 @@ class OptimizationSuiteTests(unittest.TestCase):
     def test_lambda_and_callable_keep_reachable_globals(self):
         tree = checked_file("lambda_scopes")
         tree.accept(RemoveUnusedVariables())
-        self.assertEqual([fn.name for fn in tree.functions], ["helper"])
-        self.assertEqual(len(tree.generated_structs), 1)
+        self.assertEqual([fn.name for fn in tree.functions], ["helper", "dead"])
+        self.assertEqual(len(tree.generated_structs), 2)
         self.assertIn("Lambda show", ast_text(tree))
-        self.assertNotIn("Lambda unused", ast_text(tree))
+        self.assertIn("Lambda unused", ast_text(tree))
         callable_tree = checked_file("callable_objects")
         callable_tree.accept(RemoveUnusedVariables())
         self.assertEqual([fn.name for fn in callable_tree.functions], ["helper"])
@@ -111,9 +111,21 @@ class OptimizationSuiteTests(unittest.TestCase):
         self.assertIsNone(dead_exit())
         self.assertEqual([fn.name for fn in tree.functions], ["twice"])
 
-        tree = checked_file("lambda_scopes")
-        body = tree.statements[1].body
-        dead_lambda = body.statements[2]
+        # Lambda declarations are not candidates for unused-variable removal.
+        # A lambda in a deleted global function still gets freed with its body.
+        source = b"""fn abandoned := () -> i32
+{
+    fn callback := []() -> i32
+    {
+        exit 4
+    }
+    exit 0
+}
+exit 0
+"""
+        tree = Parser(lex(source)).parse_program()
+        tree.accept(SemanticChecker())
+        dead_lambda = tree.functions[0].body[0]
         self.assertIsInstance(dead_lambda, LambdaNode)
         lambda_ref = weakref.ref(dead_lambda)
         generated_ref = weakref.ref(dead_lambda.synthetic_struct)
@@ -122,7 +134,7 @@ class OptimizationSuiteTests(unittest.TestCase):
         gc.collect()
         self.assertIsNone(lambda_ref())
         self.assertIsNone(generated_ref())
-        self.assertEqual(len(tree.generated_structs), 1)
+        self.assertFalse(tree.generated_structs)
 
 
 if __name__ == "__main__":

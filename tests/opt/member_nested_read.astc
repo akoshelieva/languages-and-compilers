@@ -10,9 +10,15 @@ Program
             Var x
         Exit
           Var result
-  ExprStmt
-    Call read
-  ExprStmt
-    Call read
+  Decl t Twice const
+    Const 2
+  Decl ignored i32 const
+    BinOp +
+      CallableCall t
+        Var t
+        Call read
+      CallableCall t
+        Var t
+        Call read
   Exit
     Call read

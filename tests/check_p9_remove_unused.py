@@ -91,7 +91,7 @@ exit read()
 """
         tree = checked(source)
         self.assertEqual([type(s) for s in tree.statements],
-                         [ExprStmtNode, ExprStmtNode, ExprStmtNode])
+                         [DeclNode, AssignNode])
         stdin = b"1\n2\n3\n4\n"
         self.assertEqual(run_cli(source, ("--remove-unused",), stdin),
                          b"Program exit with result 4\n")
@@ -111,7 +111,7 @@ exit 0
 """
         tree = checked(source)
         self.assertEqual([type(s) for s in tree.statements],
-                         [ExprStmtNode, ExprStmtNode, ExprStmtNode])
+                         [DeclNode, AssignNode])
         self.assertEqual(run_cli(source, ("--remove-unused",)),
                          b"4\n6\n9\nProgram exit with result 0\n")
 
@@ -127,7 +127,7 @@ p.x := read()
 exit read()
 """
         tree = checked(source)
-        self.assertEqual([type(s) for s in tree.statements], [ExprStmtNode])
+        self.assertEqual([type(s) for s in tree.statements], [DeclNode, AssignNode])
         self.assertEqual(run_cli(source, ("--remove-unused",), b"11\n22\n"),
                          b"Program exit with result 22\n")
 
@@ -146,8 +146,7 @@ Outer ignored{{read()}, read()}
 exit read()
 """
         tree = checked(source)
-        self.assertEqual([type(s) for s in tree.statements],
-                         [ExprStmtNode, ExprStmtNode])
+        self.assertEqual([type(s) for s in tree.statements], [DeclNode])
         self.assertEqual(run_cli(source, ("--remove-unused",), b"3\n4\n5\n"),
                          b"Program exit with result 5\n")
 
@@ -186,7 +185,7 @@ i32 ignored{c.inc()}
 exit 0
 """
         tree = checked(source)
-        self.assertEqual(len([s for s in tree.statements if isinstance(s, DeclNode)]), 1)
+        self.assertEqual(len([s for s in tree.statements if isinstance(s, DeclNode)]), 2)
         self.assertEqual(run_cli(source, ("--remove-unused",)),
                          b"1\nProgram exit with result 0\n")
 
@@ -212,7 +211,7 @@ exit 0
         self.assertEqual(run_cli(source, ("--remove-unused",)),
                          b"9\nProgram exit with result 0\n")
 
-    def test_dead_lambda_removes_its_capture_source_at_fixpoint(self):
+    def test_unused_lambda_and_its_capture_are_not_pruned(self):
         source = """\
 i32 captured{12}
 fn unused := [captured]() -> i32
@@ -222,7 +221,7 @@ fn unused := [captured]() -> i32
 exit 0
 """
         tree = checked(source)
-        self.assertFalse(tree.statements)
+        self.assertEqual([type(s) for s in tree.statements], [DeclNode, LambdaNode])
         self.assertEqual(run_cli(source, ("--remove-unused",)),
                          b"Program exit with result 0\n")
 

@@ -13,7 +13,7 @@ from llvmlite import binding
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from src.compiler import (CodeGen, ExprStmtNode, Parser,
+from src.compiler import (CodeGen, DeclNode, Parser,
                           RemoveUnusedVariables, SemanticChecker, lex)
 
 FIXTURES = ROOT / "tests" / "opt"
@@ -39,26 +39,28 @@ def definitions(ir):
 class FinalOptimizationAudit(unittest.TestCase):
     def test_condition_local_effects_are_not_hoisted(self):
         tree = optimized("branch_read_effects")
-        self.assertFalse(tree.functions)
+        self.assertEqual([fn.name for fn in tree.functions], ["identity"])
         branches = (tree.statements[0].body, tree.statements[0].else_block)
         self.assertEqual([len(block.statements) for block in branches], [1, 1])
         for block in branches:
-            self.assertIsInstance(block.statements[0], ExprStmtNode)
-            self.assertEqual(block.statements[0].expression.name, "read")
+            self.assertIsInstance(block.statements[0], DeclNode)
+            self.assertEqual(block.statements[0].initializers[0].name, "identity")
+            self.assertEqual(block.statements[0].initializers[0].args[0].name, "read")
         self.assertEqual(ir_of(tree).count('call i32 (i8*, ...) @"scanf"'), 3)
 
     def test_pure_wrapper_removed_but_effectful_argument_kept(self):
         tree = optimized("effectful_arg_in_pure_call")
-        self.assertEqual([fn.name for fn in tree.functions], ["emit"])
+        self.assertEqual([fn.name for fn in tree.functions], ["emit", "passthrough"])
         self.assertEqual(len(tree.statements), 1)
-        self.assertEqual(tree.statements[0].expression.name, "emit")
-        self.assertEqual(tree.statements[0].expression.args[0].name, "read")
-        self.assertEqual(definitions(ir_of(tree)), {"main", "user_emit"})
+        self.assertIsInstance(tree.statements[0], DeclNode)
+        self.assertEqual(tree.statements[0].initializers[0].name, "passthrough")
+        self.assertEqual(tree.statements[0].initializers[0].args[0].name, "emit")
+        self.assertEqual(definitions(ir_of(tree)), {"main", "user_emit", "user_passthrough"})
 
     def test_mutually_recursive_functions_are_conservatively_retained(self):
         tree = optimized("mutual_recursion_effects")
         self.assertEqual([fn.name for fn in tree.functions], ["left", "right"])
-        self.assertIsInstance(tree.statements[0], ExprStmtNode)
+        self.assertIsInstance(tree.statements[0], DeclNode)
         self.assertEqual(definitions(ir_of(tree)),
                          {"main", "user_left", "user_right"})
 
@@ -77,15 +79,15 @@ class FinalOptimizationAudit(unittest.TestCase):
                     self.assertEqual(out.getvalue(), first)
 
     def test_unused_pure_functions_are_released_with_root_alive(self):
-        tree = Parser(lex((FIXTURES / "effectful_arg_in_pure_call.txt").read_bytes())).parse_program()
+        tree = Parser(lex((FIXTURES / "pdf_additional_pure_vs_loud.txt").read_bytes())).parse_program()
         tree.accept(SemanticChecker())
-        dead = weakref.ref(tree.functions[0])
-        pure = weakref.ref(tree.functions[2])
+        square = weakref.ref(tree.functions[0])
+        quiet = weakref.ref(tree.functions[1])
         tree.accept(RemoveUnusedVariables())
         gc.collect()
-        self.assertIsNone(dead())
-        self.assertIsNone(pure())
-        self.assertEqual([fn.name for fn in tree.functions], ["emit"])
+        self.assertIsNone(square())
+        self.assertIsNone(quiet())
+        self.assertEqual([fn.name for fn in tree.functions], ["loud"])
 
 
 if __name__ == "__main__":

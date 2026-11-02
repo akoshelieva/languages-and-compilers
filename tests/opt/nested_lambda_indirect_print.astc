@@ -9,12 +9,12 @@ Program
             Exit
               Const 1
       Decl printer lambda.printer const
-    ExprStmt
+    Decl unused i32 const
       CallableCall printer
         Var printer
     Exit
       Const 2
-  ExprStmt
+  Decl unused i32 const
     Call outer
   Exit
     Const 4

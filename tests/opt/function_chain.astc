@@ -8,5 +8,10 @@ Program
   Function finish -> i32
     Exit
       Const 4
+  Function dead_recursive -> i32
+    Param n i32 const
+    Exit
+      Call dead_recursive
+        Var n
   Exit
     Call start

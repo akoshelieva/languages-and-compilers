@@ -2,6 +2,9 @@ Program
   Function helper -> i32
     Exit
       Const 2
+  Function dead -> i32
+    Exit
+      Const 99
   If
     Bool true
     Block
@@ -19,6 +22,19 @@ Program
               Exit
                 Var result
         Decl show lambda.show const
+          Var x
+      Lambda unused -> i32
+        Struct lambda.unused
+          Field x i32 const
+          MemberFn call -> i32
+            Block
+              Decl result i32 const
+                BinOp +
+                  Var x
+                  Call dead
+              Exit
+                Var result
+        Decl unused lambda.unused const
           Var x
       Print
         CallableCall show

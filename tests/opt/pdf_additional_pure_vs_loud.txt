@@ -1,0 +1,18 @@
+fn square := (i32 a) -> i32
+{
+    i32 r{a * a}
+    exit r
+}
+fn quiet := (i32 a) -> i32
+{
+    exit square(a)
+}
+fn loud := (i32 a) -> i32
+{
+    print(a)
+    exit a
+}
+i32 a{square(3)}
+i32 b{quiet(4)}
+i32 c{loud(5)}
+exit 0

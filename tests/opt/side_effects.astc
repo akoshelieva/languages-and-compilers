@@ -5,15 +5,15 @@ Program
       Var n
     Exit
       Var n
-  ExprStmt
-    Call trace
-      Const 4
-  ExprStmt
-    Call read
-  ExprStmt
-    Call trace
-      Const 6
-  ExprStmt
-    Call read
+  Decl ignored i32 mut
+    BinOp +
+      Call trace
+        Const 4
+      Call read
+  Assign ignored
+    BinOp +
+      Call trace
+        Const 6
+      Call read
   Exit
     Call read

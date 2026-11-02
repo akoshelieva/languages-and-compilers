@@ -27,10 +27,10 @@ Program
             Const 1
     Exit
       Var n
-  ExprStmt
-    Call counting
-      Const 3
-  ExprStmt
-    Call loop
+  Decl ignored i32 const
+    BinOp +
+      Call counting
+        Const 3
+      Call loop
   Exit
     Const 4

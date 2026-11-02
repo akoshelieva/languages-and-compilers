@@ -1,4 +1,4 @@
-"""Practice 9 Task 2: reachable global functions after unused-variable removal."""
+"""Practice 9 Task 2: resolved global call counts after unused-variable removal."""
 
 import contextlib
 import io
@@ -104,9 +104,9 @@ fn spin := (i32 n) -> i32
 }
 exit 4
 """
-        self.assertFalse(tree_for(source).functions)
+        self.assertEqual([f.name for f in tree_for(source).functions], ["spin"])
         ir, output = compile_cli(source)
-        self.assertNotIn('user_spin', ir)
+        self.assertIn('user_spin', ir)
         self.assertEqual(output, b"Program exit with result 4\n")
 
     def test_unreachable_mutual_recursion(self):
@@ -129,10 +129,10 @@ fn odd := (i32 n) -> bool
 }
 exit 4
 """
-        self.assertFalse(tree_for(source).functions)
+        self.assertEqual([f.name for f in tree_for(source).functions], ["even", "odd"])
         ir, output = compile_cli(source)
-        self.assertNotIn('user_even', ir)
-        self.assertNotIn('user_odd', ir)
+        self.assertIn('user_even', ir)
+        self.assertIn('user_odd', ir)
         self.assertEqual(output, b"Program exit with result 4\n")
 
     def test_live_recursion_is_retained(self):
@@ -252,7 +252,7 @@ exit 0
         self.assertIn('Holder_calculate', ir)
         self.assertEqual(output, b"Program exit with result 0\n")
 
-    def test_lambda_pruned_by_variables_does_not_keep_global_alive(self):
+    def test_unused_lambda_is_retained_and_keeps_global_call(self):
         source = """\
 fn helper := () -> i32
 {
@@ -265,12 +265,12 @@ fn unused := []() -> i32
 exit 0
 """
         tree = tree_for(source)
-        self.assertFalse(tree.functions)
-        self.assertFalse(tree.statements)
-        self.assertFalse(tree.generated_structs)
+        self.assertEqual([fn.name for fn in tree.functions], ['helper'])
+        self.assertEqual(len(tree.statements), 1)
+        self.assertEqual(len(tree.generated_structs), 1)
         ir, output = compile_cli(source)
-        self.assertNotIn('user_helper', ir)
-        self.assertNotIn('lambda.unused', ir)
+        self.assertIn('user_helper', ir)
+        self.assertIn('lambda.unused', ir)
         self.assertEqual(output, b"Program exit with result 0\n")
 
     def test_nested_lambda_in_dead_function_prunes_dependencies(self):
@@ -309,7 +309,7 @@ exit 4
 """
         tree = tree_for(source)
         self.assertEqual([f.name for f in tree.functions], ["show"])
-        self.assertNotIn('Decl dropped', ast_text(tree))
+        self.assertIn('Decl dropped', ast_text(tree))
         ir, output = compile_cli(source)
         self.assertIn('user_show', ir)
         self.assertEqual(output, b"3\nProgram exit with result 4\n")
@@ -327,7 +327,7 @@ exit 4
 """
         tree = tree_for(source)
         self.assertEqual([f.name for f in tree.functions], ["show"])
-        self.assertNotIn('Decl unused', ast_text(tree))
+        self.assertIn('Decl unused', ast_text(tree))
         ir, output = compile_cli(source)
         self.assertIn('user_show', ir)
         self.assertEqual(output, b"2\nProgram exit with result 4\n")

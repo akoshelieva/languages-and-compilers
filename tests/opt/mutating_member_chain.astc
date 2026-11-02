@@ -15,7 +15,7 @@ Program
           Call change
   Decl c Counter mut
     Const 1
-  ExprStmt
+  Decl unused i32 const
     MemberCall proxy
       Var c
   Exit
