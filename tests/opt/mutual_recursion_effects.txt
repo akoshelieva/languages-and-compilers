@@ -1,0 +1,18 @@
+fn left := (i32 n) -> i32
+{
+    if n == 0
+    {
+        exit 1
+    }
+    exit right(n - 1)
+}
+fn right := (i32 n) -> i32
+{
+    if n == 0
+    {
+        exit 2
+    }
+    exit left(n - 1)
+}
+i32 unused{left(3)}
+exit 4

@@ -1,0 +1,13 @@
+fn identity := (i32 n) -> i32
+{
+    exit n
+}
+if false
+{
+    i32 ignored{identity(read())}
+}
+else
+{
+    i32 ignored{identity(read())}
+}
+exit read()

@@ -1,16 +1,16 @@
-# languages-and-compilers — Practices 1–8
+# languages-and-compilers — Practices 1–9
 
-Incremental compiler for Practices 1–8. `src/compiler.py` contains the byte lexer,
-parser, AST, semantic checker and LLVM code generator; `compiler.py` is the
-compatible root CLI. Earlier practices remain supported. The original Git
-history is retained in the `practice-7` branch.
+Incremental compiler for Practices 1–9. `src/compiler.py` contains the byte lexer,
+parser, AST, semantic checker, opt-in Practice 9 AST optimizer and LLVM code
+generator; `compiler.py` is the compatible root CLI. Earlier practices remain
+supported. The original Git history is retained in the `practice-7` branch.
 
 ## Setup (venv)
 
-The corrected archive was checked with Python 3.12.14, `llvmlite` 0.50.0
-(LLVM 22.1.0) and MCJIT. Neither native `lli` nor `clang` was installed in
-this recheck environment. The original implementation had also been checked
-with Python 3.13, `llvmlite` 0.47.0 and `clang` 17.
+The final Practice 9 regression run used Python 3.13.5, `llvmlite` 0.47.0
+(LLVM 20.1.8), and `clang` 17 for compilation and execution. Native `lli` was
+not available, so `run_tests.py` used `clang`. Earlier runs also used Python
+3.12.14 with `llvmlite` 0.50.0 (LLVM 22.1.0) and MCJIT.
 
 ```bash
 python3 -m venv .venv
@@ -219,7 +219,7 @@ python tests/check_p9_remove_unused_functions.py
 Without `--remove-unused`, compilation and both AST modes retain their prior
 behavior. `--ast` always displays the original parsed tree.
 
-## Optimizations (Practice 9 — Task 3: tests and documentation)
+## Optimizations (Practice 9 — Tasks 1–3 and Additional Task)
 
 Optimization is **opt-in**: `--remove-unused` runs the existing
 `RemoveUnusedVariables` AST visitor after `SemanticChecker` has resolved
@@ -292,13 +292,16 @@ warm-up reproductions demonstrate unread variables and unused functions
 (`twice(2)` produces only `user_twice` and `main` in LLVM IR and prints exit
 4). Further cases cover transitive function chains, `if`/shadowing, `read()`
 and calls with side effects, no-change optimization, scoped lambda captures,
-callable objects, member calls and the self-feeding limitation.
+callable objects, member calls, self-feeding, branch-local effects, indirect
+`print` in a pure-call argument and conservative mutual recursion.
 
 ```bash
 python run_tests.py                         # tests/ok + tests/err in both modes; tests/opt
 python tests/check_p9_optimization_suite.py # AST fixpoint, LLVM verifier, weakref/GC
 python tests/check_p9_remove_unused.py      # Task 1 regressions
 python tests/check_p9_remove_unused_functions.py # Task 2 regressions
+python tests/check_p9_pure_calls.py # Additional Task regressions
+python tests/check_p9_final_audit.py # Conditional effects, recursion, weakref
 python compiler.py --remove-unused --ast-checked tests/opt/warmup_unused_functions.txt
 python compiler.py --remove-unused tests/opt/warmup_unused_functions.txt output.ll
 ```
@@ -309,5 +312,10 @@ outputs/errors verbatim. It also checks `tests/opt` output in *both* modes,
 LLVM IR validity, the optimized `.astc` golden, and that `--remove-unused`
 does not alter plain `--ast`. `no_optimization` additionally checks that
 checked AST output is identical with and without optimization. The old
-fixtures and test files were not changed. No additional optimization task is
-implemented here.
+fixtures and test files were not changed. The final audit also runs all
+`tests/check_*.py` programs, LLVM verification, and the `clang` execution
+backend; its extra regressions are in `tests/check_p9_final_audit.py` and the
+`tests/opt/{branch_read_effects,effectful_arg_in_pure_call,mutual_recursion_effects}.*`
+fixtures. Those cases explicitly ensure that effects stay within their `if`
+branch, pure wrappers disappear without dropping an effectful argument, and
+mutual recursion is conservatively preserved.

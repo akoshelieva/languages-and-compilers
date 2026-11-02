@@ -1,0 +1,11 @@
+Program
+  If
+    Bool false
+    Block
+      ExprStmt
+        Call read
+    Block
+      ExprStmt
+        Call read
+  Exit
+    Call read

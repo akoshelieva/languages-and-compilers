@@ -1,0 +1,12 @@
+Program
+  Function emit -> i32
+    Param x i32 const
+    Print
+      Var x
+    Exit
+      Var x
+  ExprStmt
+    Call emit
+      Call read
+  Exit
+    Const 4
