@@ -1,171 +1,37 @@
-Practice 8 — Task 1 (callable objects only)
+Practice 9 — AST Optimizations
 
 AI tool used:
-- OpenAI ChatGPT, for reading the Practice 8 instructions, inspecting the
-  existing code, implementing callable objects and validating the changes.
-
-User prompt (summarised from Ukrainian):
-- Preserve the existing compiler and all earlier functionality, avoid broad
-  refactoring, implement only Task 1 by rewriting calls during semantic
-  analysis into MemberCallNode, add tests and validate PDF examples.
-- Work locally without push or PR; create a branch/commit only if real .git
-  metadata exists in the provided archive.
-
-Retained unchanged:
-- Existing lexer, parser, AST node declarations, LLVM CodeGen and earlier tests.
-- The member-call type checking and mutating-effect propagation framework.
-
-AI-assisted changes:
-- Added variable-first call resolution and explicit ambiguity errors when a
-  variable and a function share a called name.
-- Rewrote callable-variable calls and callable-field calls in place into the
-  existing MemberCallNode, preserving the args and receiver expression.
-- Used the existing member-call checker and LLVM generation; customised
-  callable argument and mutation errors to name the object and carry positions.
-- Added positive and negative Task 1 fixtures, including the PDF example, and
-  a dedicated AST/IR and mutating-effect check.
-
-Validation:
-- Both existing main test runners and all Practice 7/earlier regression
-  scripts passed after the Task 1 implementation.
-- The Task 1 PDF example produced the exact expected output with clang.
-- Real native lli was unavailable; clang was used as the runtime backend.
-- The provided source ZIP contained no .git metadata; no branch, commit,
-  push or pull request was created or simulated.
-
-Work scope:
-- Only Task 1 was implemented. No lambda or mut-capture support was added.
-
-Practice 8 — Lambda syntax and parser AST (semantic and LLVM stages deferred)
-
-AI tool used:
-- OpenAI ChatGPT, for reviewing the previous compiler, implementing the
-  minimal lexer/parser/AST additions, creating isolated parser fixtures,
-  and running existing and new test suites.
-
-User prompt (summarised from Ukrainian):
-- Implement lambda declaration syntax and initial AST representation only.
-- Support empty, multiple, and mut captures and declarations at the top
-  level, in functions/member functions, if/while, and nested lambdas.
-- Reject function declarations without capture lists in blocks and capture
-  lists on member functions; keep --ast as the original parse tree.
-- Add separate parser-only tests; do not include unfinished lambda programs
-  among tests/ok; avoid rewriting or changing old tests.
-- Commit locally if the provided repository contains real Git metadata.
-
-AI-assisted changes:
-- Recognised '[' and ']' as punctuation tokens.
-- Added CaptureNode and LambdaNode with original captures, parameters,
-  return type, body, mut flags, and source coordinates.
-- Added parser handling for lambda declarations in statements and nested
-  blocks while preserving ordinary function and member function syntax.
-- Updated grammar.ebnf and added isolated .src/.ast/.err parser fixtures
-  and a dedicated verification script under tests/.
-- Added an explicit location-bearing diagnostic when a parsed lambda is
-  submitted to semantic analysis, rather than attempting LLVM generation.
-
-Not implemented:
-- Lambda capture validation, symbol resolution, AST desugaring, closure
-  semantics, --ast-checked, and LLVM code generation.
-
-Git status:
-- The supplied Task 1 archive does not contain a .git directory; no branch,
-  commit, push, or pull request was created.
-
-Validation for this stage:
-- Parser-only fixtures: 22 passed, 0 failed (9 accepted syntax fixtures,
-  11 rejected syntax fixtures, 2 structural/smoke checks).
-- Existing check.py: 274 passed, 0 failed.
-- Existing run_tests.py: 208 passed, 0 failed (clang runtime backend).
-- Existing Practice 7 AST: 23 passed; member semantics/LLVM: 38 passed;
-  I/O: 42 passed; additional: 20 passed; CLI: 6 passed.
-- Practice 8 Task 1 AST/IR checks and the four earlier LLVM IR
-  checks passed unchanged.
-
-Practice 8 — Task 2: const lambda captures, lowering, LLVM
-
-AI tool used:
-- OpenAI ChatGPT to extend the existing SemanticChecker, AST and CodeGen,
-  test PDF examples, add Task 2 tests and run regression suites.
-
-User prompt (summarised):
-- Lower each lambda to a unique synthetic lambda.<name> struct with capture
-  fields, a call member function and a variable initialized by copying the
-  values at the declaration site. Support empty captures, nested lambdas,
-  lambda captures, scopes, functions/member functions, and loops.
-- Enforce lexical visibility and const captures, reject forbidden uses of
-  lambda values with source coordinates, add --ast-checked, keep --ast intact.
-- Reuse llvmlite.ir and previous member-call/struct mechanisms, test all old
-  behavior. Defer mut captures. Commit if actual Git metadata is available.
-
-AI-assisted implementation (reviewed and retained):
-- Reused StructDeclNode, FieldDeclNode, MemberFnNode, DeclNode and VarNode;
-  synthetic structs remain nested under LambdaNode for --ast-checked, while
-  CodeGen registers their types and functions before generating executable
-  statements. Names are made unique across scopes.
-- Copied capture initializers in source order at the declaration point;
-  maintained isolated member-function scopes for lambda bodies. Inaccessible
-  enclosing variables produce missing-capture errors.
-- Explicitly rejected duplicate/unknown/missing captures, parameter/capture
-  conflicts, const-capture assignments, direct recursion, lambda values in
-  calls/assignments/initializers/exits/prints, and outside capture access.
-- Added --ast-checked and reused existing llvmlite.ir GEP/store/call code.
-- Added positive/negative programs plus an AST/LLVM semantic checker;
-  changed the obsolete parser smoke assertion of unimplemented semantics to
-  verify that the earlier parser fixture now compiles successfully.
-
-Deferred: mut captures. Their syntax remains accepted in --ast but semantic
-checking deliberately reports that mut captures are not yet supported.
-
-Git: the supplied archive contains no .git, so no local branch/commit/push/PR.
-
-Practice 8 — Additional Task: mutable lambda captures
-
-AI assistance: implementation review, focused test design, LLVM IR verification,
-regression testing, and patch preparation. Changes were checked and adapted to
-the existing compiler design.
-
-Implementation:
-- Reuse lambda lowering into synthetic structs, member functions, and closure
-  declarations. A [mut name] capture is a mutable field initialized by a copy
-  of the visible source value; the closure variable is mutable if any capture
-  is mutable. Capturing const values and existing lambda objects is permitted.
-- Reuse existing field assignment checks, mutation marking and callable-object
-  receiver validation. Re-run member-call mutation propagation after top-level
-  lambdas are registered so transitive mutating lambda calls are caught.
-- Keep the original --ast parse tree, show lowered field/declaration mutability
-  in --ast-checked, and generate all IR via llvmlite.ir without IR strings.
-- Test the PDF's next/twice example, independent mutable copies, mixed
-  captures, loops, nested lambdas, member functions, capturing const sources,
-  copying other lambdas, and const mutation errors with line:column.
-- Update the Task 2 focused test's obsolete expectation that mutable captures
-  are unsupported; retain and strengthen assertions for --ast vs --ast-checked.
-
-Repository metadata:
-- The supplied ZIP has no .git directory; no Git branch, commit, push or PR
-  can be made. The resulting ZIP and incremental patch are supplied instead.
-
-Practice 8 — final verification and documentation
+- OpenAI ChatGPT (GPT-6).
 
 AI assistance:
-- Reviewed the full Practice 8 PDF against the existing lexer, AST, semantic
-  lowering, CodeGen and all earlier Practice 8 fixtures.
-- Found and fixed two related lambda name-resolution issues without changing
-  user-defined struct rules: implicit access to the synthetic 'call' method
-  from a lambda body, and collisions when a captured variable is named 'call'.
-  The generated method remains available via object.call(...); a captured
-  callable variable named 'call' remains visible inside the lambda.
-- Added focused positive/negative programs for global 'call' functions,
-  captured 'call' variables (including nested and mutating lambda calls),
-  missing captures of enclosing member fields, and sidecar .in input.
-- Updated README to describe Practice 8, --ast-checked, test commands and
-  the actual Git/archive situation; grammar.ebnf already covers lambda syntax
-  and did not need changes.
+- Reviewed the existing compiler implementation.
+- Helped implement unused variable removal using AST visitors.
+- Added declaration-based read counting, scopes, shadowing,
+  captures and fixpoint optimization.
+- Helped implement unused global function removal.
+- Added call graph analysis, including recursion and lambdas.
+- Implemented conservative side-effect analysis for pure calls.
+- Preserved print, read(), mutating methods and recursive calls.
+- Reused the existing SemanticChecker and LLVM CodeGen.
+- Added optimization tests and updated documentation.
+- Assisted with debugging and regression testing.
 
-User-specified constraints preserved:
-- No old test programs or golden outputs were modified.
-- No textual LLVM IR generation; all new code uses existing llvmlite.ir paths.
-- No new architecture, Git history simulation, push or pull request.
+Validation:
+- check.py: 359 passed, 0 failed.
+- run_tests.py: 563 passed, 0 failed.
+- All 18 tests/check_*.py scripts passed.
+- 23 complete optimization test sets.
+- LLVM IR verified and programs executed using clang.
+- Existing functionality and tests were preserved.
 
-AI Chat:
-https://chatgpt.com/share/6adf56ba-685c-83eb-b0ca-1a1014411dc5
+Limitations:
+- Self-feeding variables are not fully optimized.
+- Recursive functions and loops are treated conservatively.
+- Native lli was unavailable; clang was used instead.
+- Exact PDF examples could not be independently verified
+  because the Practice 9 PDF was not available.
+
+Git:
+- Implementation completed on the local practice-9 branch.
+- Changes committed locally.
+- No push or pull request was performed.
