@@ -1,0 +1,8 @@
+Enter point 1 (x y):
+Enter point 2 (x y):
+Enter point 3 (x y):
+Enter distance squared:
+Point{x: -3, y: 4}
+Point{x: 4, y: -3}
+Point{x: 5, y: 0}
+Program exit with result 3

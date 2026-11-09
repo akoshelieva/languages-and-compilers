@@ -1,0 +1,4 @@
+extern fn announce := (i32 value) -> i32
+extern fn unused_c_function := (i32 value) -> i32
+i32 discarded{announce(41)}
+exit 0

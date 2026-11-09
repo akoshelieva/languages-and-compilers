@@ -1,0 +1,6 @@
+fn fn_name := () -> i32
+{
+    exit 0
+}
+extern fn user_fn_name := (i32 v) -> i32
+exit 0

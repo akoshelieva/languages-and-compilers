@@ -1,0 +1,1 @@
+compilation error: line 6:26: parameter 'p' of extern function 'norm' has type 'Point': only i32 and i64 cross into C

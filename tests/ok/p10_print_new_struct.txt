@@ -1,0 +1,18 @@
+struct Ticket
+{
+    i32 code
+    bool valid
+}
+struct Envelope
+{
+    Ticket ticket
+    i64 number
+}
+fn identity := (Envelope item) -> Envelope
+{
+    exit item
+}
+Envelope e{{42, true}, 9000000000}
+print(e)
+print(identity(e))
+exit 0

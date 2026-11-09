@@ -1,0 +1,6 @@
+struct Point
+{
+    i32 x
+    extern fn wrong := () -> i32
+}
+exit 0

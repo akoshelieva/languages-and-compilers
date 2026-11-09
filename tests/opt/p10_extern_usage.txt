@@ -1,0 +1,8 @@
+extern fn abs := (i32 n) -> i32
+extern fn llabs := (i64 n) -> i64
+fn never_called := () -> i32
+{
+    exit 9
+}
+i32 unused{abs(0 - 3)}
+exit 7

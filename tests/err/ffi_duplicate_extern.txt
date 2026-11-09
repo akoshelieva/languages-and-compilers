@@ -1,0 +1,3 @@
+extern fn abs := (i32 v) -> i32
+extern fn abs := (i32 v) -> i32
+exit 0
