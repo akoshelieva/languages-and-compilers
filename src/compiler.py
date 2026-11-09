@@ -620,6 +620,19 @@ class NotNode(ASTNode):
         return [self.operand]
 
 
+class ExprStmtNode(ASTNode):
+    """Internal statement retaining effects of a removed initializer or store."""
+
+    def __init__(self, expression):
+        self.expression = expression
+
+    def label(self):
+        return "ExprStmt"
+
+    def children(self):
+        return [self.expression]
+
+
 class Parser:
     def __init__(self, lines):
         self.lines = [
@@ -1625,7 +1638,15 @@ class SemanticChecker:
             while isinstance(cursor, FieldAccessNode):
                 links.append(cursor)
                 cursor = cursor.base
-            if not isinstance(cursor, VarNode) or not cursor.decl.mutable:
+            if isinstance(cursor, VarNode) and not cursor.decl.mutable:
+                if (self.current_struct is not None
+                        and getattr(self.current_struct, "lambda_type", False)
+                        and isinstance(cursor.decl, FieldDeclNode)):
+                    self.fail(node, f"cannot assign to field '{links[0].name}' of "
+                                    f"capture '{cursor.name}': the capture is const; "
+                                    f"use '[mut {cursor.name}]' to modify it")
+                self.fail(node, f"cannot assign to '{node.name}': it is not mut")
+            if not isinstance(cursor, VarNode):
                 self.fail(node, f"cannot assign to '{node.name}': it is not mut")
             for link in reversed(links):
                 if not link.field.mutable:
@@ -1639,6 +1660,10 @@ class SemanticChecker:
         else:
             node.decl = self.lookup(node, node.name)
             node.type_name = node.decl.type_name
+            if self.is_lambda_type(node.type_name):
+                self.fail(node, f"cannot assign to lambda '{node.name}': "
+                                "lambda values cannot be reassigned, "
+                                "even with mutable captures")
             if not node.decl.mutable:
                 if self.current_struct is not None and getattr(self.current_struct, "lambda_type", False) \
                         and isinstance(node.decl, FieldDeclNode):
@@ -1930,6 +1955,291 @@ class SemanticChecker:
         )
 
 
+class _UnusedReadCounter:
+    """Count actual reads of resolved declarations, never assignment targets."""
+
+    def __init__(self):
+        self.declarations = set()
+        self.reads = {}
+        self.assignments = {}
+
+    def visit_children(self, node):
+        for child in node.children():
+            child.accept(self)
+
+    def __getattr__(self, name):
+        if name.startswith("visit_"):
+            return self.visit_children
+        raise AttributeError(name)
+
+    def visit_decl(self, node):
+        # A lambda is a language-level declaration, not a disposable local.
+        if not getattr(node, "synthetic_lambda", False):
+            self.declarations.add(node)
+        self.visit_children(node)
+
+    def visit_var(self, node):
+        if isinstance(node.decl, DeclNode):
+            self.reads[node.decl] = self.reads.get(node.decl, 0) + 1
+
+    def visit_assign(self, node):
+        # A store is not a read, but retain its RHS for the effect check.
+        target = node.target if node.target is not None else node
+        while isinstance(target, FieldAccessNode):
+            target = target.base
+        decl = target.decl if isinstance(target, VarNode) else node.decl
+        if isinstance(decl, DeclNode):
+            self.assignments.setdefault(decl, []).append(node)
+        node.value.accept(self)
+
+
+class _GlobalFunctionCalls:
+    """Count resolved global calls throughout the retained AST.
+
+    A call within another global function counts even if that function is not
+    called from main.  In particular, mutually recursive cycles stay: ordinary
+    use counting (unlike reachability analysis) cannot remove cycles.
+    """
+
+    def __init__(self, functions):
+        self.functions = set(functions)
+        self.calls = {function: 0 for function in functions}
+        self.seen_calls = set()
+
+    def visit_children(self, node):
+        for child in node.children():
+            child.accept(self)
+
+    def __getattr__(self, name):
+        if name.startswith("visit_"):
+            return self.visit_children
+        raise AttributeError(name)
+
+    def visit_program(self, node):
+        # Lambda methods are reached via their LambdaNode, not a second time
+        # through generated_structs.  Count each call node only once.
+        for root in node.structs + node.functions + node.statements + [node.exit_node]:
+            root.accept(self)
+
+    def visit_call(self, node):
+        if node.function in self.functions and node not in self.seen_calls:
+            self.seen_calls.add(node)
+            self.calls[node.function] += 1
+        self.visit_children(node)
+
+
+class _LiveLambdaStructs:
+    """Collect generated lambda types still referenced by the retained AST."""
+
+    def __init__(self):
+        self.structs = set()
+
+    def visit_children(self, node):
+        for child in node.children():
+            child.accept(self)
+
+    def __getattr__(self, name):
+        if name.startswith("visit_"):
+            return self.visit_children
+        raise AttributeError(name)
+
+    def visit_lambda(self, node):
+        self.structs.add(node.synthetic_struct)
+        self.visit_children(node)
+
+
+class _CallEffects:
+    """Conservative, transitive effect summary for resolved function/method calls.
+
+    No LLVM inspection is needed: SemanticChecker already resolves call targets
+    and marks mutating member functions (including mutable lambda captures).
+    Cycles are treated as observable because removing them could change
+    termination, even if their bodies contain no I/O or mutations.
+    """
+
+    def __init__(self, program):
+        structs = program.structs + program.generated_structs
+        self.callables = set(program.functions)
+        for struct in structs:
+            self.callables.update(struct.methods)
+        self.edges = {fn: set() for fn in self.callables}
+        self.effectful = set()
+        for function in self.callables:
+            body_effect = self._scan_body(function.body, function)
+            if function.mutating or body_effect:
+                self.effectful.add(function)
+
+        # A recursive cycle may diverge. Treat every participant as effectful.
+        for function in self.callables:
+            pending = list(self.edges[function])
+            seen = set()
+            while pending:
+                callee = pending.pop()
+                if callee is function:
+                    self.effectful.add(function)
+                    break
+                if callee not in seen:
+                    seen.add(callee)
+                    pending.extend(self.edges[callee])
+
+        changed = True
+        while changed:
+            before = len(self.effectful)
+            self.effectful.update(
+                fn for fn, callees in self.edges.items()
+                if any(callee in self.effectful for callee in callees)
+            )
+            changed = len(self.effectful) != before
+
+    def _scan_body(self, body, caller):
+        effect = False
+        for statement in body:
+            if self._scan(statement, caller):
+                effect = True
+        return effect
+
+    def _scan(self, node, caller):
+        if isinstance(node, LambdaNode):
+            # Constructing a closure only copies its captures. The callable
+            # body is analysed independently as a generated member method.
+            return False
+        direct = isinstance(node, (PrintNode, WhileNode))
+        if isinstance(node, (CallNode, MemberCallNode)):
+            if isinstance(node, CallNode) and node.name == "read":
+                direct = True
+            elif node.function in self.callables:
+                self.edges[caller].add(node.function)
+            else:
+                direct = True  # Unknown call: never assume pure.
+        # Always inspect children: effects in arguments must propagate too.
+        for child in node.children():
+            if self._scan(child, caller):
+                direct = True
+        return direct
+
+    def is_pure(self, call):
+        return (not (isinstance(call, CallNode) and call.name == "read")
+                and call.function in self.callables
+                and call.function not in self.effectful)
+
+
+class RemoveUnusedVariables:
+    """Prune unread local declarations, stores and unused global functions.
+
+    Run only on a tree already checked by SemanticChecker: VarNode.decl and
+    AssignNode.decl identify the binding, including shadows and captures.
+    """
+
+    @staticmethod
+    def _target_decl(node):
+        if node.target is None:
+            return node.decl
+        target = node.target
+        while isinstance(target, FieldAccessNode):
+            target = target.base
+        return target.decl if isinstance(target, VarNode) else None
+
+    def _has_effect(self, expr):
+        if (isinstance(expr, (CallNode, MemberCallNode))
+                and not self.effects.is_pure(expr)):
+            return True
+        return any(self._has_effect(child) for child in expr.children())
+
+    def _effects(self, expr):
+        # Effectful calls retain their receiver/arguments as one expression.
+        # For pure calls, visit receiver then arguments to retain any effects
+        # they themselves cause, in source evaluation order.
+        if isinstance(expr, (CallNode, MemberCallNode)) and not self.effects.is_pure(expr):
+            return [ExprStmtNode(expr)]
+        result = []
+        for child in expr.children():
+            result.extend(self._effects(child))
+        return result
+
+    def _statements(self, statements):
+        result = []
+        for statement in statements:
+            if isinstance(statement, ExprStmtNode):
+                kept = self._effects(statement.expression)
+                if not (len(kept) == 1 and kept[0].expression is statement.expression):
+                    self.changed = True
+                result.extend(kept)
+            elif isinstance(statement, DeclNode) and statement in self.unused:
+                for init in statement.initializers:
+                    result.extend(self._effects(init))
+            elif (isinstance(statement, AssignNode)
+                  and self._target_decl(statement) in self.unused):
+                result.extend(self._effects(statement.value))
+            else:
+                if isinstance(statement, (IfNode, WhileNode, LambdaNode)):
+                    statement.accept(self)
+                result.append(statement)
+        return result
+
+    def visit_program(self, node):
+        while True:
+            self.effects = _CallEffects(node)
+            counter = _UnusedReadCounter()
+            node.accept(counter)
+            self.unused = {
+                decl for decl in counter.declarations
+                if counter.reads.get(decl, 0) == 0
+                and not any(self._has_effect(init) for init in decl.initializers)
+                and not any(self._has_effect(assign.value)
+                            for assign in counter.assignments.get(decl, ()))
+            }
+            # Count global calls on this round's tree before pruning.  A call
+            # disappearing with an unused declaration affects the *next*
+            # round, as in the PDF's square/quiet example.
+            calls = _GlobalFunctionCalls(node.functions)
+            node.accept(calls)
+            self.changed = False
+            for struct in node.structs:
+                for method in struct.methods:
+                    method.accept(self)
+            for function in node.functions:
+                function.accept(self)
+            node.statements = self._statements(node.statements)
+
+            # Lambda methods are emitted separately from their AST statements.
+            # Forget generated methods belonging to a lambda pruned by Task 1
+            # or to a function removed in a previous iteration.
+            live_lambdas = _LiveLambdaStructs()
+            for root in node.structs + node.functions + node.statements:
+                root.accept(live_lambdas)
+            node.generated_structs = [struct for struct in node.generated_structs
+                                      if struct in live_lambdas.structs]
+
+            remaining = [fn for fn in node.functions if calls.calls[fn] > 0]
+            functions_removed = len(remaining) != len(node.functions)
+            node.functions = remaining
+            if not self.unused and not functions_removed and not self.changed:
+                return
+
+    def visit_function(self, node):
+        node.body = self._statements(node.body)
+
+    def visit_memberfn(self, node):
+        self.visit_function(node)
+
+    def visit_lambda(self, node):
+        node.synthetic_struct.methods[0].accept(self)
+
+    def visit_block(self, node):
+        node.statements = self._statements(node.statements)
+
+    def visit_if(self, node):
+        node.body.accept(self)
+        if node.else_block is not None:
+            node.else_block.accept(self)
+
+    def visit_while(self, node):
+        node.body.accept(self)
+
+    def __init__(self):
+        self.unused = set()
+
+
 class CodeGen:
     def __init__(self):
         self.I1 = ir.IntType(1)
@@ -2210,6 +2520,9 @@ class CodeGen:
     def visit_structdecl(self, node):
         self.struct_types[node.name].set_body(
             *(self.llvm_type(field.type_name) for field in node.fields))
+
+    def visit_exprstmt(self, node):
+        node.expression.accept(self)
 
     def visit_decl(self, node):
         node.ir_ptr = self.entry_alloca(node.type_name, node.name)
@@ -2508,13 +2821,18 @@ def dump_tokens(lines):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    remove_unused = "--remove-unused" in argv
+    if remove_unused:
+        argv.remove("--remove-unused")
     if len(argv) == 2 and argv[0] in ("--tokens", "--ast", "--ast-checked"):
         mode, input_path, output_path = argv[0], argv[1], None
     elif len(argv) == 2 and not argv[0].startswith("--"):
         mode, input_path, output_path = "compile", argv[0], argv[1]
     else:
-        print("usage: python3 compiler.py [--ast|--ast-checked|--tokens] input.txt OR "
-              "python3 compiler.py input.txt output.ll", file=sys.stderr)
+        print("usage: python3 compiler.py [--remove-unused] "
+              "[--ast|--ast-checked|--tokens] input.txt OR "
+              "python3 compiler.py [--remove-unused] input.txt output.ll",
+              file=sys.stderr)
         return 1
     if output_path is not None and os.path.abspath(input_path) == os.path.abspath(output_path):
         print("compilation error: input and output paths must be different", file=sys.stderr)
@@ -2535,6 +2853,8 @@ def main(argv=None):
             tree.dump()
             return 0
         tree.accept(SemanticChecker())
+        if remove_unused:
+            tree.accept(RemoveUnusedVariables())
         if mode == "--ast-checked":
             tree.dump()
             return 0

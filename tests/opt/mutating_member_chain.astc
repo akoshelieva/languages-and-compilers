@@ -1,0 +1,22 @@
+Program
+  Struct Counter
+    Field count i32 mut
+    MemberFn change -> i32
+      Block
+        Assign count
+          BinOp +
+            Var count
+            Const 1
+        Exit
+          Var count
+    MemberFn proxy -> i32
+      Block
+        Exit
+          Call change
+  Decl c Counter mut
+    Const 1
+  Decl unused i32 const
+    MemberCall proxy
+      Var c
+  Exit
+    Const 4

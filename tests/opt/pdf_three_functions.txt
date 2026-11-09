@@ -1,0 +1,14 @@
+fn twice := (i32 a) -> i32
+{
+    i32 r{a + a}
+    exit r
+}
+fn helper := (i32 a) -> i32
+{
+    exit twice(a)
+}
+fn unused := () -> i32
+{
+    exit helper(1)
+}
+exit twice(2)

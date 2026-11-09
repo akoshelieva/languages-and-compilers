@@ -1,0 +1,11 @@
+fn identity := (i32 x) -> i32
+{
+    exit x
+}
+fn double := (i32 x) -> i32
+{
+    i32 result{identity(x) * 2}
+    exit result
+}
+i32 unused{double(read()) + identity(read())}
+exit read()

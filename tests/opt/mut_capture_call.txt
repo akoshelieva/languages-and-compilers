@@ -1,0 +1,9 @@
+i32 base{1}
+fn bump := [mut base]() -> i32
+{
+    base := base + 1
+    exit base
+}
+i32 ignored{bump()}
+i32 ignored_explicit{bump.call()}
+exit 4

@@ -1,0 +1,22 @@
+Program
+  Function identity -> i32
+    Param x i32 const
+    Exit
+      Var x
+  Function double -> i32
+    Param x i32 const
+    Decl result i32 const
+      BinOp *
+        Call identity
+          Var x
+        Const 2
+    Exit
+      Var result
+  Decl unused i32 const
+    BinOp +
+      Call double
+        Call read
+      Call identity
+        Call read
+  Exit
+    Call read

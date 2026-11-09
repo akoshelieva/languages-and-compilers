@@ -1,0 +1,1 @@
+compilation error: line 5:18: cannot pass argument 'x' of type i32 with a value of type bool

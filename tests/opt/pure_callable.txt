@@ -1,0 +1,12 @@
+struct Adder
+{
+    i32 amount
+    fn call := (i32 n) -> i32
+    {
+        i32 result{n + amount}
+        exit result
+    }
+}
+Adder adder{2}
+i32 ignored{adder(3)}
+exit 4

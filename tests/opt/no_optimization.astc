@@ -1,0 +1,16 @@
+Program
+  Function add_one -> i32
+    Param x i32 const
+    Decl sum i32 const
+      BinOp +
+        Var x
+        Const 1
+    Exit
+      Var sum
+  Decl value i32 const
+    Call add_one
+      Const 3
+  Print
+    Var value
+  Exit
+    Var value

@@ -1,0 +1,24 @@
+Program
+  Struct Twice
+    Field n i32 const
+    MemberFn call -> i32
+      Param x i32 const
+      Block
+        Decl result i32 const
+          BinOp *
+            Var n
+            Var x
+        Exit
+          Var result
+  Decl t Twice const
+    Const 2
+  Decl ignored i32 const
+    BinOp +
+      CallableCall t
+        Var t
+        Call read
+      CallableCall t
+        Var t
+        Call read
+  Exit
+    Call read

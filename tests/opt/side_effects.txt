@@ -1,0 +1,8 @@
+fn trace := (i32 n) -> i32
+{
+    print(n)
+    exit n
+}
+i32 mut ignored{trace(4) + read()}
+ignored := trace(6) + read()
+exit read()

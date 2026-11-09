@@ -1,0 +1,16 @@
+struct Counter
+{
+    i32 mut count
+    fn change := () -> i32
+    {
+        count := count + 1
+        exit count
+    }
+    fn proxy := () -> i32
+    {
+        exit change()
+    }
+}
+Counter mut c{1}
+i32 unused{c.proxy()}
+exit 4

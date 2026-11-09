@@ -1,0 +1,6 @@
+fn pure := (i32 x) -> i32
+{
+    exit x
+}
+i32 ignored{pure(true)}
+exit 4

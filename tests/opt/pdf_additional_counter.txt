@@ -1,0 +1,18 @@
+struct Counter
+{
+    i32 mut n
+    fn bump := () -> i32
+    {
+        n := n + 1
+        exit n
+    }
+    fn peek := () -> i32
+    {
+        exit n
+    }
+}
+Counter mut c{0}
+i32 t{c.bump()}
+i32 u{c.peek()}
+print(c)
+exit 0

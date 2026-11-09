@@ -1,0 +1,12 @@
+fn outer := () -> i32
+{
+    fn printer := []() -> i32
+    {
+        print(9)
+        exit 1
+    }
+    i32 unused{printer()}
+    exit 2
+}
+i32 unused{outer()}
+exit 4

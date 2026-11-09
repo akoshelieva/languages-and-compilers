@@ -1,0 +1,12 @@
+Program
+  Function twice -> i32
+    Param x i32 const
+    Decl doubled i32 const
+      BinOp *
+        Var x
+        Const 2
+    Exit
+      Var doubled
+  Exit
+    Call twice
+      Const 2

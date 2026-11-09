@@ -1,0 +1,17 @@
+Program
+  Function report -> i32
+    Param n i32 const
+    Print
+      Var n
+    Exit
+      Var n
+  Function wrapper -> i32
+    Param x i32 const
+    Exit
+      Call report
+        Var x
+  Decl ignored i32 const
+    Call wrapper
+      Const 5
+  Exit
+    Const 4

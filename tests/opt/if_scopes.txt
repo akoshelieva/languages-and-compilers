@@ -1,0 +1,10 @@
+i32 mut value{7}
+i32 discarded{100}
+if true
+{
+    i32 value{9}
+    i32 shadow_unused{value + 1}
+    print(value)
+}
+value := 8
+exit 0

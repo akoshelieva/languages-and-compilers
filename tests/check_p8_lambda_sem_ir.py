@@ -82,7 +82,8 @@ def main():
                  "p8_lambda_param_capture_conflict", "p8_lambda_recursive",
                  "p8_lambda_pass_argument", "p8_lambda_exit_value",
                  "p8_lambda_print", "p8_lambda_assignment",
-                 "p8_lambda_decl_initializer", "p8_lambda_capture_field_access"):
+                 "p8_lambda_decl_initializer", "p8_lambda_capture_field_access",
+                 "p8_lambda_reassign_const", "p8_lambda_reassign_mut"):
         source = (ROOT / "tests" / "err" / (name + ".txt")).read_bytes()
         try:
             Parser(lex(source)).parse_program().accept(SemanticChecker())
