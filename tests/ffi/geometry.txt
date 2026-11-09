@@ -1,0 +1,22 @@
+struct Point
+{
+    i32 x
+    i32 y
+    fn d2 := () -> i32
+    {
+        i32 r{x * x + y * y}
+        exit r
+    }
+    fn d1 := () -> i32
+    {
+        i32 r{abs(x) + abs(y)}
+        exit r
+    }
+}
+extern fn abs := (i32 v) -> i32
+extern fn isqrt := (i32 v) -> i32
+print("Enter a point (x y):")
+Point p{read(), read()}
+print(p)
+print(p.d1())
+exit isqrt(p.d2())

@@ -1,0 +1,10 @@
+Program
+  ExternFunction abs -> i32
+    Param n i32 const
+  Decl unused i32 const
+    Call abs
+      BinOp -
+        Const 0
+        Const 3
+  Exit
+    Const 7

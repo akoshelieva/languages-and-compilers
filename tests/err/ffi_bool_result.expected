@@ -1,0 +1,1 @@
+compilation error: line 1:11: extern function 'odd' returns 'bool': only i32 and i64 cross into C

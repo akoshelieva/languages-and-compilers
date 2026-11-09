@@ -1,54 +1,64 @@
-Practice 9 — AI Usage
+Practice 10 — AI Usage
 
-AI tool used:
-- OpenAI ChatGPT (GPT-6).
+AI tool:
+OpenAI ChatGPT (GPT-6).
 
-AI Chat
-https://chatgpt.com/share/6ae8f3ae-7c6c-83eb-83ec-4edc75e7c138
+Chat link:
+https://chatgpt.com/share/6af23215-baa4-83ed-8fa2-5b997c20d797
 
-Prompts and requests (summarized):
-- Implement Practice 9 on top of the existing compiler without breaking previous functionality.
-- Add the --remove-unused flag and optimize the AST after semantic checking.
-- Remove unused variables by counting reads per declaration, supporting shadowing, nested scopes and repeated optimization until nothing changes.
-- Remove unused global functions and functions that become unused after other removals.
-- Implement the Additional Task: eliminate unused pure calls while preserving input/output, mutations, loops and potentially non-terminating recursion.
-- Add optimization tests, verify LLVM IR and update README.
-- Compare the implementation against the official Practice 9 PDF and correct any differences.
+Prompts:
 
-What I used from AI suggestions:
-- The AST optimization visitor and analyses for variable reads, function calls and side effects.
-- The iterative fixpoint approach for removing unused declarations and functions.
-- Test programs, expected AST snapshots, verification scripts and documentation drafts.
-- The existing compiler architecture was reused, with LLVM IR generated through llvmlite.ir instead of assembling IR as text.
+1.
+Виконай Task 1 із PDF Practice 10. Створи tests/io/points.txt, реалізуй необхідні зміни в компіляторі, включно з універсальним print(struct). Перевір компіляцію через llc і clang та запуск бінарного файлу. Дотримуйся технічних вимог PDF.
+Працюй виключно в гілці practice-10. Не роби push, pull, merge або pull request. Коміти дозволені. Не оновлюй документацію та не змінюй reflection.md. Внось реальні зміни у файли, без зайвих пояснень.
 
-What was changed or refined:
-- The initial AI-assisted implementation was reviewed after the official Practice 9 PDF became available.
-- Optimization behavior and tests were aligned with the exact two warm-up programs, the three-function example and the Additional Task examples.
-- PDF-specific regression checks were added and optimized AST expectations were corrected.
-- Existing compiler functionality and earlier tests were preserved.
-- Documentation and validation results were updated for the PDF-aligned version.
+2.
+Продовжуй Practice 10. Реалізуй усі вимоги до tests/io: points.sheet, points.none, points.all. Онови існуючий тестовий скрипт для компіляції програм у бінарні файли через compiler.py, llc і clang та перевірки очікуваного виводу. Переконайся, що всі старі й нові тести проходять із --remove-unused і без нього. Виправляй знайдені помилки без тимчасових обхідних рішень. Не оновлюй документацію, не пуш і не створюй PR. Працюй тільки в practice-10. Коміти дозволені.
 
-My understanding of the implementation:
-The optimizer checks variables by their declarations. It is important when we have two variables named x
-in different code blocks, because only the unused one should be removed. The code also removes assignments to 
-unused variables.The optimization runs several times because removing one variable can make another unused.
-In additional task solution, the code checks whether a function has side effects. For example, a call that only 
-calculates a value can be removed,but calls that print, read input or change an object should stay.
+3.
+Повністю виконай Additional Task (+1) із Practice 10: extern fn, семантичні перевірки, LLVM declarations, виклики C-функцій та підтримку --remove-unused. Додай geometry.c, geometry.txt, обидві сесії, позитивні та щонайменше 9 негативних тестів. Інтегруй усе в run_tests.py, перевір лінкування і виконання.
 
+4.
+Проведи фінальну перевірку Practice 10 за PDF. Запусти всі старі й нові тести у двох режимах, перевір points, geometry, LLVM IR, nm, лінкування та відсутність регресій. Виправ усі виявлені проблеми. Онови ai_usage.txt відповідно до фактичного використання AI. Коротко повідом результати перевірок.
 
-Validation of the PDF-aligned version:
-- check.py: 368 passed, 0 failed.
-- run_tests.py: 576 passed, 0 failed.
-- All 19 tests/check_*.py scripts passed.
-- 28 complete optimization test sets in tests/opt.
-- Tests cover optimized and unoptimized execution, AST output, LLVM IR and runtime behavior.
+AI-assisted work:
+- Reused the existing compiler architecture.
+- Improved generic structure printing.
+- Added points.sheet, points.none and points.all.
+- Updated run_tests.py to compile and test native binaries.
+- Implemented extern fn and LLVM declarations through llvmlite.ir.
+- Added C function calls and ABI-related semantic restrictions.
+- Added geometry.c, geometry.txt and both sessions.
+- Added positive, negative and optimization tests.
+- Extended --remove-unused support for external functions.
+- Reviewed and tested the implementation against the PDF.
 
-Known limitations:
-- Self-feeding variables may remain because a syntactic read still counts as a use.
-- Recursion, while loops and uncertain calls are treated conservatively.
-- The verification environment used clang because native lli was unavailable.
+What was reused:
+- Existing parser, lexer, semantic checker and code generator.
+- Existing LLVM IR infrastructure and optimization logic.
+- Existing compiler tests and previous practice implementations.
+
+What was changed:
+- Compiler implementation and test runner.
+- New test fixtures and C interoperability examples.
+- No course documentation was updated.
+
+Reflection:
+ChatGPT assisted with language corrections.
+
+Final verification in WSL:
+- check.py: 388 passed, 0 failed.
+- run_tests.py: 626 passed, 0 failed.
+- Both optimization modes passed.
+- All three points sessions passed.
+- Both geometry sessions passed.
+- LLVM IR generated successfully.
+- Native compilation through llc 18.1.3 and clang 18.1.3 passed.
+- nm confirmed printf, scanf, abs and isqrt.
+- ldd confirmed libc linking.
+- All expected output comparisons passed.
 
 AI involvement:
-- ChatGPT assisted with code implementation, debugging, tests, PDF alignment and documentation.
-- The implementation was developed with AI assistance rather than entirely independently.
- 
+ChatGPT assisted with implementation, debugging, testing,
+review and verification.
+

@@ -1,0 +1,1 @@
+compilation error: line 1:11: extern function 'twice' has no body: it is defined in C

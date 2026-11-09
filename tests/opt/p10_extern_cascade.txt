@@ -1,0 +1,6 @@
+extern fn abs := (i32 n) -> i32
+fn unused_wrapper := () -> i32
+{
+    exit abs(0 - 5)
+}
+exit 2

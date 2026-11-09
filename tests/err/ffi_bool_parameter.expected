@@ -1,0 +1,1 @@
+compilation error: line 1:28: parameter 'c' of extern function 'isalpha' has type 'bool': only i32 and i64 cross into C

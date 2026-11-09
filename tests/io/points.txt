@@ -1,0 +1,30 @@
+struct Point
+{
+    i32 x
+    i32 y
+    fn d2 := () -> i32
+    {
+        i32 r{x * x + y * y}
+        exit r
+    }
+}
+fn report := (Point p, i32 d) -> i32
+{
+    i32 mut hit{0}
+    if p.d2() == d
+    {
+        print(p)
+        hit := 1
+    }
+    exit hit
+}
+print("Enter point 1 (x y):")
+Point p1{read(), read()}
+print("Enter point 2 (x y):")
+Point p2{read(), read()}
+print("Enter point 3 (x y):")
+Point p3{read(), read()}
+print("Enter distance squared:")
+i32 d{read()}
+i32 n{report(p1, d) + report(p2, d) + report(p3, d)}
+exit n

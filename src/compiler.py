@@ -15,11 +15,40 @@ class Token:
 KEYWORDS = {
     b"i32", b"i64", b"bool",
     b"mut", b"exit", b"struct", b"fn", b"if", b"else", b"while",
-    b"true", b"false", b"read", b"print"
+    b"true", b"false", b"read", b"print", b"extern"
 }
 
 INT32_MAX = 2**31 - 1
 INT64_MAX = 2**63 - 1
+
+# Runtime declarations and constants are part of the module's global symbol
+# namespace, even though they have no user-language bindings.
+RUNTIME_IR_SYMBOLS = {
+    "main", "printf", "scanf", "fmt_scan_i32", "fmt_print_i32",
+    "fmt_print_i64", "fmt_print_str", "fmt_print_i32_line",
+    "fmt_print_i64_line", "fmt_print_str_line", "fmt_print_char",
+    "str_newline", "fmt_int", "fmt_str", "str_true", "str_false",
+}
+
+
+def assign_member_ir_names(structs, occupied):
+    """Resolve member symbols with the same collision rule used by CodeGen."""
+    occupied = set(occupied)
+    for struct in structs:
+        for method in struct.methods:
+            preferred = f"{struct.name}_{method.name}"
+            name = preferred
+            if name in occupied:
+                prefix = (f"p7_member_{len(struct.name)}_{struct.name}_"
+                          f"{len(method.name)}_{method.name}")
+                name = prefix
+                counter = 1
+                while name in occupied:
+                    counter += 1
+                    name = f"{prefix}_{counter}"
+            method.ir_name = name
+            occupied.add(name)
+    return occupied
 
 
 def is_alpha(b):
@@ -477,6 +506,16 @@ class FunctionNode(ASTNode):
         return self.params + self.body
 
 
+class ExternFunctionNode(FunctionNode):
+    """A C ABI declaration with a signature but no language-level body."""
+
+    def __init__(self, line, col, name, params, result_type):
+        super().__init__(line, col, name, params, result_type, [])
+
+    def label(self):
+        return f"ExternFunction {self.name} -> {self.result_type}"
+
+
 class MemberFnNode(FunctionNode):
 
 
@@ -756,6 +795,9 @@ class Parser:
                 methods.append(method)
                 continue
 
+            if self.peek().text == "extern":
+                self.fail("'extern' is not allowed here")
+
             if methods:
                 self.fail("field declaration cannot follow a member function")
             type_tok = self.expect_type()
@@ -812,6 +854,8 @@ class Parser:
                 self.fail("statement after 'exit' in the same block")
             if line[0].text == "struct":
                 self.fail("structs and functions are only allowed at top level")
+            if line[0].text == "extern":
+                self.fail("'extern' is not allowed here")
             if line[0].text == "else":
                 self.fail("'else' without an 'if'")
             if line[0].text == "fn":
@@ -903,6 +947,26 @@ class Parser:
         return node_class(name.line, name.col, name.text, params,
                           result.text, body.statements), next_index
 
+    def parse_extern_function(self, index):
+        self.toks, self.pos = self.lines[index], 0
+        self.expect_text("extern")
+        self.expect_text("fn")
+        name = self.expect_kind("identifier", "a function name")
+        self.expect_text(":=")
+        params = self.parse_parameters()
+        self.expect_text("->")
+        result = self.expect_type()
+        if self.peek():
+            self.fail("expected newline after function signature")
+        next_index = index + 1
+        while next_index < len(self.lines) and not self.lines[next_index]:
+            next_index += 1
+        if (next_index < len(self.lines) and self.lines[next_index][0].text == "{"):
+            raise CompileError(f"line {name.line}:{name.col}: "
+                               f"extern function '{name.text}' has no body: it is defined in C")
+        return ExternFunctionNode(name.line, name.col, name.text,
+                                  params, result.text), index + 1
+
     def parse_lambda(self, index):
         self.toks, self.pos = self.lines[index], 0
         self.expect_text("fn")
@@ -992,7 +1056,14 @@ class Parser:
                 struct, index = self.parse_struct(index)
                 structs.append(struct)
                 continue
-            if first.text == "fn":
+            if first.text in ("fn", "extern"):
+                if first.text == "extern":
+                    if phase == "statements":
+                        self.fail("function declarations must come before statements")
+                    phase = "functions"
+                    function, index = self.parse_extern_function(index)
+                    functions.append(function)
+                    continue
                 if self.is_lambda_signature(line):
                     phase = "statements"
                     stmt, index = self.parse_lambda(index)
@@ -1313,6 +1384,15 @@ class SemanticChecker:
             if param.name in seen:
                 self.fail(param, f"parameter '{param.name}' is already declared")
             seen.add(param.name)
+        if isinstance(fn, ExternFunctionNode):
+            for param in fn.params:
+                if param.type_name not in ("i32", "i64"):
+                    self.fail(param, f"parameter '{param.name}' of extern function "
+                                     f"'{fn.name}' has type '{param.type_name}': "
+                                     "only i32 and i64 cross into C")
+            if fn.result_type not in ("i32", "i64"):
+                self.fail(fn, f"extern function '{fn.name}' returns "
+                              f"'{fn.result_type}': only i32 and i64 cross into C")
 
     def visit_program(self, node):
         self.program = node
@@ -1360,6 +1440,16 @@ class SemanticChecker:
             if call.function.mutating and not getattr(call, "mutation_checked", False):
                 self.check_mutating_receiver(call)
 
+        used = RUNTIME_IR_SYMBOLS | {"user_" + fn.name for fn in node.functions
+                                     if not isinstance(fn, ExternFunctionNode)}
+        used = assign_member_ir_names(node.structs + node.generated_structs, used)
+        for fn in node.functions:
+            if isinstance(fn, ExternFunctionNode):
+                if (fn.name in used or
+                        (fn.name.startswith("print_text_") and
+                         fn.name[len("print_text_"):].isdigit())):
+                    self.fail(fn, f"'{fn.name}' is a name the compiler already uses in the module")
+
     def propagate_member_mutations(self):
         changed = True
         while changed:
@@ -1385,6 +1475,10 @@ class SemanticChecker:
         finally:
             (self.scopes, self.symbols, self.current_function,
              self.current_struct, self.current_member) = old_state
+
+    def visit_externfunction(self, node):
+        # Signature and C ABI were checked before inspecting call sites.
+        pass
 
     def visit_memberfn(self, node):
         return self.visit_function(node)
@@ -2066,7 +2160,9 @@ class _CallEffects:
         self.effectful = set()
         for function in self.callables:
             body_effect = self._scan_body(function.body, function)
-            if function.mutating or body_effect:
+            # A declaration does not describe the effects of its C body.
+            if (isinstance(function, ExternFunctionNode)
+                    or function.mutating or body_effect):
                 self.effectful.add(function)
 
         # A recursive cycle may diverge. Treat every participant as effectful.
@@ -2218,6 +2314,9 @@ class RemoveUnusedVariables:
 
     def visit_function(self, node):
         node.body = self._statements(node.body)
+
+    def visit_externfunction(self, node):
+        pass
 
     def visit_memberfn(self, node):
         self.visit_function(node)
@@ -2425,25 +2524,16 @@ class CodeGen:
             signature = ir.FunctionType(self.llvm_type(function.result_type),
                 [self.llvm_type(param.type_name) for param in function.params])
             function.ir_function = ir.Function(
-                self.module, signature, name="user_" + function.name)
+                self.module, signature,
+                name=(function.name if isinstance(function, ExternFunctionNode)
+                      else "user_" + function.name))
         for struct in structs:
             for method in struct.methods:
                 signature = ir.FunctionType(self.llvm_type(method.result_type),
                     [self.struct_types[struct.name].as_pointer()] +
                     [self.llvm_type(param.type_name) for param in method.params])
-                preferred = f"{struct.name}_{method.name}"
-                name = preferred
-                if name in self.module.globals:
-
-
-                    name = (f"p7_member_{len(struct.name)}_{struct.name}_"
-                            f"{len(method.name)}_{method.name}")
-                    counter = 1
-                    while name in self.module.globals:
-                        counter += 1
-                        name = (f"p7_member_{len(struct.name)}_{struct.name}_"
-                                f"{len(method.name)}_{method.name}_{counter}")
-                method.ir_function = ir.Function(self.module, signature, name=name)
+                method.ir_function = ir.Function(
+                    self.module, signature, name=method.ir_name)
 
         for struct in structs:
             for method in struct.methods:
@@ -2477,6 +2567,10 @@ class CodeGen:
         finally:
             self.builder, self.current_function, self.this_ptr = (saved_builder, saved_function,
                                                                  saved_this)
+
+    def visit_externfunction(self, node):
+        # An extern function is an LLVM declaration, never a definition.
+        pass
 
     def visit_memberfn(self, node):
         saved_builder, saved_function, saved_this = (self.builder, self.current_function,
@@ -2651,20 +2745,22 @@ class CodeGen:
             raise AssertionError(f"non-primitive printable: {type_name}")
 
     def _print_struct(self, address, type_name):
-        struct = self.struct_defs[type_name]
-        self._printf_text(type_name.encode('utf-8') + b'{')
-        for index, field in enumerate(struct.fields):
+        # The checked struct field table determines both layout and formatting;
+        # no structure names or field offsets are special-cased in the printer.
+        fields = self.struct_defs[type_name].fields
+        self._printf_text(type_name.encode("utf-8") + b"{")
+        for index, field in enumerate(fields):
             if index:
-                self._printf_text(b', ')
-            self._printf_text(field.name.encode('utf-8') + b': ')
-            ptr = self.builder.gep(address, [ir.Constant(self.I32, 0),
-                                             ir.Constant(self.I32, field.index)],
-                                   inbounds=True, name='print.field.ptr')
+                self._printf_text(b", ")
+            self._printf_text(field.name.encode("utf-8") + b": ")
+            field_ptr = self.builder.gep(
+                address, [ir.Constant(self.I32, 0), ir.Constant(self.I32, field.index)],
+                inbounds=True, name="print.field.ptr")
             if field.type_name in self.struct_defs:
-                self._print_struct(ptr, field.type_name)
+                self._print_struct(field_ptr, field.type_name)
             else:
-                self._print_primitive(self.builder.load(ptr), field.type_name)
-        self._printf_text(b'}')
+                self._print_primitive(self.builder.load(field_ptr), field.type_name)
+        self._printf_text(b"}")
 
     def visit_print(self, node):
         arg = node.argument
@@ -2679,16 +2775,19 @@ class CodeGen:
                 self._printf_text(arg.data)
                 self.builder.call(self.printf, [self.as_i8ptr(self.str_newline)])
             return
-        value = arg.accept(self)
         if arg.type in self.struct_defs:
-
-
-            tmp = self.entry_alloca(arg.type, 'print.struct.tmp')
-            self.builder.store(value, tmp)
-            self._print_struct(tmp, arg.type)
+            if isinstance(arg, VarNode):
+                address = self.field_ptr(arg)
+            else:
+                # Expressions can yield a struct by value; materialize it once
+                # so the same field-table walk handles both values and lvalues.
+                value = arg.accept(self)
+                address = self.entry_alloca(arg.type, "print.struct.tmp")
+                self.builder.store(value, address)
+            self._print_struct(address, arg.type)
             self.builder.call(self.printf, [self.as_i8ptr(self.str_newline)])
         else:
-            self._print_primitive(value, arg.type, newline=True)
+            self._print_primitive(arg.accept(self), arg.type, newline=True)
 
     def visit_exit(self, node):
         value = node.value.accept(self)

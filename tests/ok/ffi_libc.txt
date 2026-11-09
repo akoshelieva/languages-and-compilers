@@ -1,0 +1,9 @@
+extern fn abs := (i32 v) -> i32
+extern fn llabs := (i64 v) -> i64
+fn magnitude := (i32 n) -> i32
+{
+    exit abs(n)
+}
+print(magnitude(0 - 9))
+print(llabs(0 - 1234567890123))
+exit abs(0 - 4)

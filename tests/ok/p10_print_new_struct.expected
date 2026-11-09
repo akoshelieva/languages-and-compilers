@@ -1,0 +1,3 @@
+Envelope{ticket: Ticket{code: 42, valid: true}, number: 9000000000}
+Envelope{ticket: Ticket{code: 42, valid: true}, number: 9000000000}
+Program exit with result 0
