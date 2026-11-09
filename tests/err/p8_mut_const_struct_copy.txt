@@ -1,0 +1,15 @@
+struct Counter
+{
+    i32 mut n
+    fn call := () -> i32
+    {
+        n := n + 1
+        exit n
+    }
+}
+Counter c{0}
+fn bad := [c]() -> i32
+{
+    exit c()
+}
+exit bad()

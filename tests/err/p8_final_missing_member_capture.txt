@@ -1,0 +1,14 @@
+struct Container
+{
+    i32 field
+    fn get := () -> i32
+    {
+        fn f := []() -> i32
+        {
+            exit field
+        }
+        exit f()
+    }
+}
+Container c{5}
+exit c.get()

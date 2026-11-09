@@ -1,0 +1,19 @@
+Program
+  Function outer -> i32
+    Param factor i32 const
+    Lambda multiply -> i32
+      Capture factor const
+      Param x i32 const
+      Block
+        Decl r i32 const
+          BinOp *
+            Var factor
+            Var x
+        Exit
+          Var r
+    Exit
+      Call multiply
+        Const 3
+  Exit
+    Call outer
+      Const 5

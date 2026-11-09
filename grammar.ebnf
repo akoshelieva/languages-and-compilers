@@ -7,7 +7,9 @@ fn              ::= "fn" ident ":=" "(" [ type ident { "," type ident } ] ")" "-
 function_block  ::= "{" NL { statement NL } exit NL "}" NL
 block           ::= "{" NL ( exit NL | statement NL { statement NL } [ exit NL ] ) "}" NL
 
-statement       ::= decl | assign | if | while | print
+statement       ::= decl | assign | if | while | print | lambda
+lambda          ::= "fn" ident ":=" "[" [ capture { "," capture } ] "]" "(" [ type ident { "," type ident } ] ")" "->" type NL block
+capture         ::= [ "mut" ] ident
 print           ::= "print" "(" ( string | expr ) ")"
 string          ::= '"' { any byte except '"' and NL } '"'
 

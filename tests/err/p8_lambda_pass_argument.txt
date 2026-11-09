@@ -1,0 +1,9 @@
+fn takes := (i32 x) -> i32
+{
+    exit x
+}
+fn f := []() -> i32
+{
+    exit 4
+}
+exit takes(f)

@@ -1,0 +1,20 @@
+Program
+  Decl a i32 const
+    Const 1
+  Lambda outer -> i32
+    Capture a const
+    Block
+      Lambda inner -> i32
+        Capture a const
+        Block
+          Exit
+            Var a
+      Lambda copy -> i32
+        Capture inner const
+        Block
+          Exit
+            Call inner
+      Exit
+        Call copy
+  Exit
+    Call outer

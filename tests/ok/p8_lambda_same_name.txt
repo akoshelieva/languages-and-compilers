@@ -1,0 +1,17 @@
+if true
+{
+    fn repeat := []() -> i32
+    {
+        exit 1
+    }
+    print(repeat())
+}
+if true
+{
+    fn repeat := []() -> i32
+    {
+        exit 2
+    }
+    print(repeat())
+}
+exit 0

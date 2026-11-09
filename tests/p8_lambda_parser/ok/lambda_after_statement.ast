@@ -1,0 +1,11 @@
+Program
+  Decl first i32 const
+    Const 1
+  Print
+    Var first
+  Lambda second -> i32
+    Block
+      Exit
+        Const 2
+  Exit
+    Call second

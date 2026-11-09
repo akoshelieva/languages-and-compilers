@@ -1,0 +1,15 @@
+struct Box
+{
+    i32 x
+    fn eval := (i32 factor) -> i32
+    {
+        fn local := [x, factor]() -> i32
+        {
+            i32 r{x + factor}
+            exit r
+        }
+        exit local()
+    }
+}
+Box b{6}
+exit b.eval(7)

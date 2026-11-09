@@ -1,0 +1,14 @@
+i32 seed{7}
+fn outer := [seed]() -> i32
+{
+    fn inner := [seed]() -> i32
+    {
+        exit seed
+    }
+    fn copy := [inner]() -> i32
+    {
+        exit inner()
+    }
+    exit copy()
+}
+exit outer()

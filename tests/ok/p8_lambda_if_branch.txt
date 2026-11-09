@@ -1,0 +1,18 @@
+i32 n{10}
+if true
+{
+    fn f := [n]() -> i32
+    {
+        exit n
+    }
+    print(f())
+}
+else
+{
+    fn f := []() -> i32
+    {
+        exit 0
+    }
+    print(f())
+}
+exit n

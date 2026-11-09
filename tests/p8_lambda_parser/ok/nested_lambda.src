@@ -1,0 +1,14 @@
+i32 a{1}
+fn outer := [a]() -> i32
+{
+    fn inner := [a]() -> i32
+    {
+        exit a
+    }
+    fn copy := [inner]() -> i32
+    {
+        exit inner()
+    }
+    exit copy()
+}
+exit outer()

@@ -1,0 +1,21 @@
+struct Tick
+{
+    i32 mut n
+    fn call := () -> i32
+    {
+        n := n + 1
+        exit n
+    }
+}
+struct Holder
+{
+    Tick mut tick
+    fn advance := () -> i32
+    {
+        exit tick()
+    }
+}
+Holder mut h{{0}}
+print(h.tick())
+print(h.advance())
+exit h.tick.call()

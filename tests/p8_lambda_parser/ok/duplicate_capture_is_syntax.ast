@@ -1,0 +1,11 @@
+Program
+  Decl k i32 const
+    Const 1
+  Lambda repeated -> i32
+    Capture k const
+    Capture k const
+    Block
+      Exit
+        Var k
+  Exit
+    Const 0

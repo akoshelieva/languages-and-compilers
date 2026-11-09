@@ -1,6 +1,6 @@
-# languages-and-compilers — Practice 7 (Tasks 1–4 + Additional)
+# languages-and-compilers — Practices 1–8
 
-Incremental compiler for Practices 1–7. `src/compiler.py` contains the byte lexer,
+Incremental compiler for Practices 1–8. `src/compiler.py` contains the byte lexer,
 parser, AST, semantic checker and LLVM code generator; `compiler.py` is the
 compatible root CLI. Earlier practices remain supported. The original Git
 history is retained in the `practice-7` branch.
@@ -112,3 +112,70 @@ remain read-only, and an identical input/output path is rejected before any
 file is removed. Runner diagnostics preserve binary stdout/stderr consistently,
 including a failed clang build. All seven Task 4 negative categories now have
 `.txt`/`.expected` fixtures directly under `tests/err`.
+
+## Practice 8: callable objects and lambdas
+
+A struct whose member function is named `call` can be invoked as `object(args)`;
+`object.call(args)` remains legal. The semantic checker rewrites the first
+form into the existing member-call AST, including callable fields. Calls
+validate visible-variable/function name collisions, argument types/counts,
+and transitive member mutability, with `line:column` diagnostics.
+
+Lambdas use `fn name := [captures](params) -> type` followed by a block.
+A capture is copied at declaration time; `[name]` stores a const copy and
+`[mut name]` stores an independently mutable copy, even if the source was
+const. Each lambda is lowered by `SemanticChecker` into a uniquely named
+`lambda.<name>` struct, a `call` member method, and a declaration initialized
+from captures. Empty, nested, scoped, and loop-local lambdas are supported,
+as is capturing another lambda. The closure variable is `mut` if any capture
+is `mut`; existing mutating member-call rules apply transitively. The original
+variables are never modified by mutations of the closure's copies.
+
+The lambda body sees only its parameters, locals, captures, and global
+functions; the synthetic `call` method is not implicitly visible by name.
+A capture itself may be named `call` without colliding with the synthetic
+method. Lambda types have no source-language names and lambda objects cannot
+be passed or used as ordinary values outside permitted captures.
+
+`--ast` prints the original parse tree; `--ast-checked` prints the lowered
+AST, including synthetic structures and `CallableCall` nodes. All LLVM IR is
+created through `llvmlite.ir` (`str(module)` only serializes the module).
+
+PDF demonstration programs are `tests/ok/p8_callable_pdf_task1.txt`,
+`tests/ok/p8_lambda_pdf.txt`, and `tests/ok/p8_mut_pdf.txt`. All three have
+matching `.expected` outputs. For input-consuming tests, a same-stem `.in`
+file supplies standard input.
+
+## Practice 8: callable objects and lambdas
+
+A struct whose member function is named `call` can be invoked as `object(args)`;
+`object.call(args)` remains legal. The semantic checker rewrites the first
+form into the existing member-call AST, including callable fields. Calls
+validate visible-variable/function name collisions, argument types/counts,
+and transitive member mutability, with `line:column` diagnostics.
+
+Lambdas use `fn name := [captures](params) -> type` followed by a block.
+A capture is copied at declaration time; `[name]` stores a const copy and
+`[mut name]` stores an independently mutable copy, even if the source was
+const. Each lambda is lowered by `SemanticChecker` into a uniquely named
+`lambda.<name>` struct, a `call` member method, and a declaration initialized
+from captures. Empty, nested, scoped, and loop-local lambdas are supported,
+as is capturing another lambda. The closure variable is `mut` if any capture
+is `mut`; existing mutating member-call rules apply transitively. The original
+variables are never modified by mutations of the closure's copies.
+
+The lambda body sees only its parameters, locals, captures, and global
+functions; the synthetic `call` method is not implicitly visible by name.
+A capture itself may be named `call` without colliding with the synthetic
+method. Lambda types have no source-language names and lambda objects cannot
+be passed or used as ordinary values outside permitted captures.
+
+`--ast` prints the original parse tree; `--ast-checked` prints the lowered
+AST, including synthetic structures and `CallableCall` nodes. All LLVM IR is
+created through `llvmlite.ir` (`str(module)` only serializes the module).
+
+PDF demonstration programs are `tests/ok/p8_callable_pdf_task1.txt`,
+`tests/ok/p8_lambda_pdf.txt`, and `tests/ok/p8_mut_pdf.txt`. All three have
+matching `.expected` outputs. For input-consuming tests, a same-stem `.in`
+file supplies standard input.
+

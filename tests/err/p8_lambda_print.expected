@@ -1,0 +1,1 @@
+compilation error: line 5:7: 'f' is a lambda and cannot be printed: its type has no name

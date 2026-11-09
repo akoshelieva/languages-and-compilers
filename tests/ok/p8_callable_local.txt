@@ -1,0 +1,15 @@
+struct Scale
+{
+    i32 factor
+    fn call := (i32 n) -> i32
+    {
+        i32 result{factor * n}
+        exit result
+    }
+}
+fn calculate := (i32 n) -> i32
+{
+    Scale local{n}
+    exit local(3)
+}
+exit calculate(7)

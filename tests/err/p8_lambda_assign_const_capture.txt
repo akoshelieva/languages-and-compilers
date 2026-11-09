@@ -1,0 +1,7 @@
+i32 mut k{1}
+fn f := [k]() -> i32
+{
+    k := k + 1
+    exit k
+}
+exit 0

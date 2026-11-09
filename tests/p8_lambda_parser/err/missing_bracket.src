@@ -1,0 +1,5 @@
+fn broken := [a(i32 v) -> i32
+{
+    exit v
+}
+exit 0

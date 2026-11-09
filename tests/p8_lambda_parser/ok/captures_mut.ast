@@ -1,0 +1,22 @@
+Program
+  Decl n i32 mut
+    Const 2
+  Decl m i32 const
+    Const 3
+  Decl k i32 mut
+    Const 4
+  Lambda mix -> i64
+    Capture n mut
+    Capture m const
+    Capture k mut
+    Param a i32 const
+    Param b i64 const
+    Block
+      Decl r i64 const
+        BinOp +
+          Var b
+          Var a
+      Exit
+        Var r
+  Exit
+    Const 0
